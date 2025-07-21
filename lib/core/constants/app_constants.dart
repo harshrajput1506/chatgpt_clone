@@ -18,8 +18,13 @@ class AppConstants {
   static const double padding = 16.0;
   static const double messageSpacing = 8.0;
 
-  // Chat Constants
-  static const String defaultModel = 'gpt-3.5-turbo';
-  static const int maxTokens = 1000;
-  static const double temperature = 0.7;
+
+
+  // Models constants
+  static const List<String> availableModels = [
+    'gpt-4o-mini',
+    'gpt-4.1',
+    'gpt-4o',
+    'gpt-4.1-mini',
+  ];
 }

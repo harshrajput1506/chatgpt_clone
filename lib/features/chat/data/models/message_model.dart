@@ -1,26 +1,15 @@
-enum MessageType { text, image }
+import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 
-enum MessageRole { user, assistant }
-
-class MessageModel {
-  final String id;
-  final String content;
-  final MessageType type;
-  final MessageRole role;
-  final DateTime timestamp;
-  final String? imageUrl;
-  final bool isLoading;
-  final bool hasError;
-
+class MessageModel extends Message {
   const MessageModel({
-    required this.id,
-    required this.content,
-    required this.type,
-    required this.role,
-    required this.timestamp,
-    this.imageUrl,
-    this.isLoading = false,
-    this.hasError = false,
+    required super.id,
+    required super.content,
+    required super.type,
+    required super.role,
+    required super.timestamp,
+    super.imageUrl,
+    super.isLoading,
+    super.hasError,
   });
 
   MessageModel copyWith({

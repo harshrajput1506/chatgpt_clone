@@ -1,5 +1,5 @@
 // import 'package:hive_flutter/hive_flutter.dart';
-import '../../features/shared/models/message_model.dart';
+import '../../features/chat/data/models/message_model.dart';
 import '../../features/shared/models/chat_model.dart';
 
 class LocalStorageService {

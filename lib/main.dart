@@ -1,8 +1,8 @@
+import 'package:chatgpt_clone/config/routes.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:flutter/material.dart';
-// import 'package:flutter_dotenv/flutter_dotenv.dart';
-// import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/app_theme.dart';
-import 'features/home/presentation/pages/home_page.dart';
 import 'config/injector.dart' as sl;
 
 void main() async {
@@ -10,9 +10,6 @@ void main() async {
 
   // Setup dependencies
   sl.init();
-
-  // Load environment variables
-  // await dotenv.load(fileName: ".env");
 
   // Initialize Hive
   // await Hive.initFlutter();
@@ -25,13 +22,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ChatGPT Clone',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      home: const HomePage(),
-      debugShowCheckedModeBanner: false,
+    return MultiBlocProvider(
+      providers: [BlocProvider<ChatBloc>(create: (_) => sl.di<ChatBloc>())],
+      child: MaterialApp.router(
+        title: 'ChatGPT Clone',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
+        routerConfig: AppRouter.router,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

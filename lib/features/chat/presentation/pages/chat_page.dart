@@ -1,21 +1,22 @@
+import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:flutter/material.dart';
-import '../../../shared/models/message_model.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
+import '../bloc/chat_bloc.dart';
+import '../bloc/chat_event.dart';
+import '../bloc/chat_state.dart';
 
 class ChatPage extends StatefulWidget {
-  final String chatId;
-
-  const ChatPage({super.key, required this.chatId});
+  const ChatPage({super.key});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final List<MessageModel> _messages = [];
   final ScrollController _scrollController = ScrollController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,34 +27,97 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ChatGPT'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _regenerateLastResponse,
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // Show more options
-            },
-          ),
-        ],
+      body: SafeArea(
+        child: BlocBuilder<ChatBloc, ChatState>(
+          builder: (context, state) {
+            final messages =
+                state is ChatLoaded
+                    ? List<Message>.from(state.messages)
+                    : <Message>[];
+            final isLoading = state is ChatLoaded && state.isLoading == true;
+            if (messages.isNotEmpty) {
+              // Ensure the scroll position is at the bottom when loading
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _scrollToBottom();
+              });
+            }
+            return Column(
+              children: [
+                _buildAppBar(),
+                Expanded(
+                  child:
+                      messages.isEmpty
+                          ? _buildEmptyState()
+                          : _buildMessageList(messages),
+                ),
+                if (isLoading) _buildTypingIndicator(),
+                MessageInput(
+                  onSendMessage:
+                      (content, model) => _sendMessage(context, content, model),
+                  onSendImage:
+                      (imagePath, caption, model) =>
+                          _sendImageMessage(context, imagePath, caption),
+                  enabled: !isLoading,
+                ),
+              ],
+            );
+          },
+        ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _messages.isEmpty ? _buildEmptyState() : _buildMessageList(),
+    );
+  }
+
+  Widget _buildAppBar() {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        IconButton(
+          onPressed: () {},
+          icon: SvgPicture.asset(
+            'assets/icons/menu.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurface,
+              BlendMode.srcIn,
+            ),
           ),
-          if (_isLoading) _buildTypingIndicator(),
-          MessageInput(
-            onSendMessage: _sendMessage,
-            onSendImage: _sendImageMessage,
-            enabled: !_isLoading,
+        ),
+        const SizedBox(width: 2),
+        Text(
+          'ChatGPT',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
           ),
-        ],
-      ),
+        ),
+        Spacer(),
+        IconButton(
+          icon: SvgPicture.asset(
+            'assets/icons/edit.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurfaceVariant,
+              BlendMode.srcIn,
+            ),
+          ),
+          onPressed: () {},
+        ),
+        IconButton(
+          onPressed: () {},
+          icon: SvgPicture.asset(
+            'assets/icons/three-dots.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurfaceVariant,
+              BlendMode.srcIn,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -78,16 +142,19 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageList() {
+  Widget _buildMessageList(List<Message> messages) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: _messages.length,
+      itemCount: messages.length,
       itemBuilder: (context, index) {
-        final message = _messages[index];
+        final message = messages[index];
         return MessageBubble(
           message: message,
-          onRetry: message.hasError ? () => _retryMessage(message.id) : null,
+          onRetry:
+              message.hasError
+                  ? () => _retryMessage(context, message.id)
+                  : null,
         );
       },
     );
@@ -98,9 +165,7 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.all(16),
       child: const Row(
         children: [
-          CircleAvatar(radius: 16, child: Icon(Icons.smart_toy, size: 16)),
-          SizedBox(width: 12),
-          Text('ChatGPT is typing...'),
+          Text('Responding...'),
           SizedBox(width: 8),
           SizedBox(
             width: 20,
@@ -112,91 +177,43 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void _sendMessage(String content) {
+  void _sendMessage(BuildContext context, String content, String model) {
     if (content.trim().isEmpty) return;
-
-    final userMessage = MessageModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: content,
-      type: MessageType.text,
-      role: MessageRole.user,
-      timestamp: DateTime.now(),
-    );
-
-    setState(() {
-      _messages.add(userMessage);
-      _isLoading = true;
-    });
-
-    _scrollToBottom();
-    _generateResponse();
-  }
-
-  void _sendImageMessage(String imagePath, String caption) {
-    final userMessage = MessageModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: caption,
-      type: MessageType.image,
-      role: MessageRole.user,
-      timestamp: DateTime.now(),
-      imageUrl:
-          imagePath, // In real app, this would be uploaded to Cloudinary first
-    );
-
-    setState(() {
-      _messages.add(userMessage);
-      _isLoading = true;
-    });
-
-    _scrollToBottom();
-    _generateResponse();
-  }
-
-  Future<void> _generateResponse() async {
-    // Simulate AI response
-    await Future.delayed(const Duration(seconds: 2));
-
-    final assistantMessage = MessageModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content:
-          'This is a simulated response from ChatGPT. In the real implementation, this would come from the OpenAI API.',
-      type: MessageType.text,
-      role: MessageRole.assistant,
-      timestamp: DateTime.now(),
-    );
-
-    setState(() {
-      _messages.add(assistantMessage);
-      _isLoading = false;
-    });
-
+    // You may want to pass the selected model from UI
+    BlocProvider.of<ChatBloc>(context).add(SendMessageEvent(content, model));
     _scrollToBottom();
   }
 
-  void _retryMessage(String messageId) {
-    // Find and retry the failed message
-    final messageIndex = _messages.indexWhere((m) => m.id == messageId);
-    if (messageIndex != -1) {
-      setState(() {
-        _messages[messageIndex] = _messages[messageIndex].copyWith(
-          hasError: false,
-          isLoading: true,
-        );
-        _isLoading = true;
-      });
-      _generateResponse();
-    }
+  void _sendImageMessage(
+    BuildContext context,
+    String imagePath,
+    String caption,
+  ) {
+    // Implement image message event if needed in ChatBloc
+    // BlocProvider.of<ChatBloc>(context).add(SendImageMessageEvent(...));
+    // For now, just show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Image message sending not implemented in Bloc.'),
+      ),
+    );
   }
 
-  void _regenerateLastResponse() {
-    if (_messages.isNotEmpty && _messages.last.role == MessageRole.assistant) {
-      setState(() {
-        _messages.removeLast();
-        _isLoading = true;
-      });
-      _generateResponse();
-    }
+  // _generateResponse removed: now handled by Bloc
+
+  void _retryMessage(BuildContext context, String messageId) {
+    // Implement retry event if needed in ChatBloc
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Retry not implemented in Bloc.')),
+    );
   }
+
+  // void _regenerateLastResponse(BuildContext context) {
+  //   // Implement regenerate event if needed in ChatBloc
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(content: Text('Regenerate not implemented in Bloc.')),
+  //   );
+  // }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

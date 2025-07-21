@@ -1,9 +1,11 @@
+import 'package:chatgpt_clone/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 // import 'package:file_picker/file_picker.dart';
 
 class MessageInput extends StatefulWidget {
-  final Function(String) onSendMessage;
-  final Function(String, String) onSendImage;
+  final Function(String, String) onSendMessage;
+  final Function(String, String, String) onSendImage;
   final bool enabled;
 
   const MessageInput({
@@ -28,72 +30,197 @@ class _MessageInputState extends State<MessageInput> {
     super.dispose();
   }
 
+  // Move these to be fields so their state persists and can be updated
+  bool showModelChange = false; // Show model change when input is empty
+  int selectedModelIndex = 0; // Default to first model
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    var canSend = _controller.text.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.2),
-          ),
-        ),
+        color: Theme.of(context).scaffoldBackgroundColor,
       ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: widget.enabled ? _pickImage : null,
-              icon: const Icon(Icons.attach_file),
-              tooltip: 'Attach image',
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                enabled: widget.enabled,
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Send a message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: widget.enabled ? _pickImage : null,
+                  icon: SvgPicture.asset(
+                    'assets/icons/gallery.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(
+                      colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
                   ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainer,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  tooltip: 'Attach image',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Row(
+                    crossAxisAlignment:
+                        canSend
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 4.0,
+                            horizontal: 8.0,
+                          ),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxHeight: 150,
+                            ), // add expand button later
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              enabled: widget.enabled,
+                              maxLines: null,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: InputDecoration(
+                                hintText: 'Ask anything',
+                                filled: false,
+                                fillColor: colorScheme.surfaceContainer,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              cursorColor: colorScheme.onSurface,
+                              onSubmitted: _sendMessage,
+                              onChanged: (value) {
+                                if (value.isEmpty) {
+                                  // show model change button
+                                  setState(() {
+                                    canSend = false;
+                                  });
+                                } else {
+                                  // show send message button
+                                  setState(() {
+                                    canSend = true;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      if (!canSend) ...[
+                        GestureDetector(
+                          onTap: () {
+                            // Show model change options
+                            setState(() {
+                              showModelChange = !showModelChange;
+                            });
+                          },
+                          child: Text(
+                            AppConstants.availableModels[selectedModelIndex],
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: colorScheme.secondary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            // Show model change options
+                            setState(() {
+                              showModelChange = !showModelChange;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.all(8.0),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/icons/model-control.svg',
+                              width: 20,
+                              height: 20,
+                              colorFilter: ColorFilter.mode(
+                                colorScheme.onSurface,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        GestureDetector(
+                          onTap: () => _sendMessage(_controller.text),
+                          child: Container(
+                            margin: const EdgeInsets.all(8.0),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: colorScheme.inverseSurface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/icons/up-arrow.svg',
+                              width: 20,
+                              height: 20,
+                              colorFilter: ColorFilter.mode(
+                                colorScheme.onInverseSurface,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                onSubmitted: _sendMessage,
               ),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              onPressed:
-                  widget.enabled && _controller.text.trim().isNotEmpty
-                      ? () => _sendMessage(_controller.text)
-                      : null,
-              backgroundColor:
-                  widget.enabled && _controller.text.trim().isNotEmpty
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.surfaceContainer,
-              child: Icon(
-                Icons.send,
-                color:
-                    widget.enabled && _controller.text.trim().isNotEmpty
-                        ? Colors.white
-                        : theme.colorScheme.onSurface,
+            ],
+          ),
+          // Show model chips
+          if (showModelChange) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(
+                AppConstants.availableModels.length,
+                (index) => ChoiceChip(
+                  label: Text(AppConstants.availableModels[index]),
+                  selected: selectedModelIndex == index,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  onSelected: (selected) {
+                    setState(() {
+                      selectedModelIndex = index;
+                      showModelChange = false; // Hide after selection
+                    });
+                  },
+                ),
               ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -101,7 +228,10 @@ class _MessageInputState extends State<MessageInput> {
   void _sendMessage(String content) {
     if (content.trim().isEmpty || !widget.enabled) return;
 
-    widget.onSendMessage(content.trim());
+    widget.onSendMessage(
+      content.trim(),
+      AppConstants.availableModels[selectedModelIndex] // Use selected model,
+    );
     _controller.clear();
     _focusNode.requestFocus();
   }

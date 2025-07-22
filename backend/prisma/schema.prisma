@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Chat {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  uid       String   // User ID who owns this chat
+  title     String   @default("New Chat") // Default title until AI generates one
+  messages  Message[]
+  createdAt DateTime @default(now())
+  
+  @@index([uid]) // Index for efficient querying by user
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  chatId    String   @db.ObjectId
+  content   String
+  sender    String
+  imageId   String?  @db.ObjectId
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  image     Image?   @relation(fields: [imageId], references: [id])
+}
+
+model Image {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  publicId     String    @unique
+  url          String
+  originalName String
+  size         Int
+  format       String
+  width        Int
+  height       Int
+  createdAt    DateTime  @default(now())
+  messages     Message[]
+}

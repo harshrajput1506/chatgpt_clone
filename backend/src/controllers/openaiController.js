@@ -6,7 +6,6 @@ import {
     isOpenAIConfigured
 } from '../config/openai.js';
 import { getSmartContext, formatMessageForOpenAI } from '../utils/conversationUtils.js';
-import prisma from '../prisma.js';
 
 // Generate AI response for a chat
 export const generateAIResponse = async (req, res) => {

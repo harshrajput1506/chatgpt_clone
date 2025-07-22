@@ -242,7 +242,7 @@ export const getAvailableModels = async (req, res) => {
 
             {
                 id: 'gpt-4o-mini',
-                name: 'GPT-4.1',
+                name: 'GPT-4o Mini',
                 supports_images: true,
                 max_tokens: 8192
             },

@@ -93,36 +93,16 @@ export const createMessage = async (req, res) => {
             }
         });
 
-        // Auto-generate title if this is the first user message and chat has default title
-        let titleGenerated = false;
-        if (sender === 'user' &&
-            chat._count.messages === 0 &&
-            (chat.title === 'New Chat' || chat.title.startsWith('New Chat'))) {
-
-            try {
-                const newTitle = await generateChatTitle(content);
-                await prisma.chat.update({
-                    where: { id: chatId },
-                    data: { title: newTitle }
-                });
-                titleGenerated = true;
-                message.generatedTitle = newTitle;
-            } catch (titleError) {
-                console.error('Error generating chat title:', titleError);
-                // Don't fail the message creation if title generation fails
-            }
-        }
-
         res.status(201).json({
             success: true,
             message,
-            titleGenerated,
-            ...(titleGenerated && { newChatTitle: message.generatedTitle })
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-}; export const deleteMessage = async (req, res) => {
+};
+
+export const deleteMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
 

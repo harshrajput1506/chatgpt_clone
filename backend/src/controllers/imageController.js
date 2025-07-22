@@ -18,10 +18,15 @@ export const uploadImage = async (req, res) => {
             });
         }
 
-        // Upload to Cloudinary
+        console.log(`Starting upload for file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+
+        // Upload to Cloudinary with timeout handling
         const result = await uploadToCloudinary(req.file.buffer, {
             public_id: `chatgpt_clone_${Date.now()}`,
         });
+
+        console.log(`Upload successful for: ${req.file.originalname}`);
+        console.log(`Cloudinary response:`, result);
 
         // Save image info to database
         const imageRecord = await prisma.image.create({
@@ -42,6 +47,24 @@ export const uploadImage = async (req, res) => {
         });
     } catch (error) {
         console.error('Upload error:', error);
+
+        // Handle specific timeout errors
+        if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+            return res.status(408).json({
+                error: 'Upload timeout',
+                details: 'The image upload took too long. Please try again with a smaller image or check your connection.',
+            });
+        }
+
+        // Handle Cloudinary-specific errors
+        if (error.http_code) {
+            return res.status(500).json({
+                error: 'Image upload service error',
+                details: `Cloudinary error: ${error.message}`,
+                code: error.http_code
+            });
+        }
+
         res.status(500).json({
             error: 'Failed to upload image',
             details: error.message
@@ -63,6 +86,8 @@ export const uploadMultipleImages = async (req, res) => {
             });
         }
 
+        console.log(`Starting upload for ${req.files.length} files`);
+
         const uploadPromises = req.files.map(async (file, index) => {
             // Validate file type
             const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -74,6 +99,8 @@ export const uploadMultipleImages = async (req, res) => {
             if (file.size > 5 * 1024 * 1024) {
                 throw new Error(`File ${file.originalname} is too large`);
             }
+
+            console.log(`Uploading file ${index + 1}/${req.files.length}: ${file.originalname}`);
 
             // Upload to Cloudinary
             const result = await uploadToCloudinary(file.buffer, {
@@ -108,6 +135,8 @@ export const uploadMultipleImages = async (req, res) => {
 
         const uploadedImages = await Promise.all(uploadPromises);
 
+        console.log(`Successfully uploaded ${uploadedImages.length} images`);
+
         res.status(201).json({
             success: true,
             images: uploadedImages,
@@ -115,6 +144,25 @@ export const uploadMultipleImages = async (req, res) => {
         });
     } catch (error) {
         console.error('Multiple upload error:', error);
+
+        // Handle specific timeout errors
+        if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+            return res.status(408).json({
+                error: 'Upload timeout',
+                details: 'One or more image uploads took too long. Please try again with smaller images.',
+                suggestion: 'Try uploading fewer images at once or compressing them first'
+            });
+        }
+
+        // Handle Cloudinary-specific errors
+        if (error.http_code) {
+            return res.status(500).json({
+                error: 'Image upload service error',
+                details: `Cloudinary error: ${error.message}`,
+                code: error.http_code
+            });
+        }
+
         res.status(500).json({
             error: 'Failed to upload images',
             details: error.message

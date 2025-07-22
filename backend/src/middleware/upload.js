@@ -24,10 +24,44 @@ const upload = multer({
 });
 
 // Middleware for single file upload
-export const uploadSingle = upload.single('image');
+export const uploadSingle = (req, res, next) => {
+    const multerSingle = upload.single('image');
+
+    multerSingle(req, res, (error) => {
+        if (error) {
+            return handleMulterError(error, req, res, next);
+        }
+        next();
+    });
+};
 
 // Middleware for multiple file upload
-export const uploadMultiple = upload.array('images', 5);
+export const uploadMultiple = (req, res, next) => {
+    const multerMultiple = upload.array('images', 5);
+
+    multerMultiple(req, res, (error) => {
+        if (error) {
+            return handleMulterError(error, req, res, next);
+        }
+        next();
+    });
+};
+
+// Middleware to check for multipart content
+export const requireMultipart = (req, res, next) => {
+    const contentType = req.get('content-type');
+
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+        return res.status(400).json({
+            error: 'Invalid Content-Type',
+            details: 'This endpoint requires multipart/form-data content type for file uploads',
+            expected: 'multipart/form-data',
+            received: contentType || 'none'
+        });
+    }
+
+    next();
+};
 
 // Error handling middleware for multer
 export const handleMulterError = (error, req, res, next) => {
@@ -52,10 +86,28 @@ export const handleMulterError = (error, req, res, next) => {
         }
     }
 
+    // Handle boundary not found error
+    if (error.message && error.message.includes('Boundary not found')) {
+        return res.status(400).json({
+            error: 'Multipart boundary not found',
+            details: 'Please ensure your request uses multipart/form-data content type with proper boundary headers',
+            hint: 'Make sure your client is sending a proper multipart request'
+        });
+    }
+
     if (error.message === 'Only image files are allowed') {
         return res.status(400).json({
             error: 'Invalid file type',
             details: 'Only image files are allowed'
+        });
+    }
+
+    // Handle other multer/busboy errors
+    if (error.message && error.message.includes('Multipart')) {
+        return res.status(400).json({
+            error: 'Multipart parsing error',
+            details: error.message,
+            hint: 'Ensure your request is properly formatted as multipart/form-data'
         });
     }
 

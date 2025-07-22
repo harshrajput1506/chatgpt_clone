@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import routes from './routes.js';
+import routes from './routes/routes.js';
+import imageRoutes from './routes/imageRoutes.js';
+import openaiRoutes from './routes/openaiRoutes.js';
 
 const app = express();
 
@@ -18,9 +20,22 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
+// Set request timeout for file uploads (2 minutes)
+app.use('/api/images', (req, res, next) => {
+    req.setTimeout(120000); // 2 minutes
+    res.setTimeout(120000); // 2 minutes
+    next();
+});
+
 app.get('/', (req, res) => {
     res.send('Welcome to the ChatGPT Clone Backend!');
 });
+
+// Image routes
+app.use('/api/images', imageRoutes);
+
+// OpenAI routes
+app.use('/api/ai', openaiRoutes);
 
 app.use('/api', routes);
 

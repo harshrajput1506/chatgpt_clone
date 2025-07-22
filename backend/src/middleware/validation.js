@@ -55,7 +55,8 @@ export const validateUserAccess = (req, res, next) => {
     }
 
     next();
-}; export const validateMessageCreation = (req, res, next) => {
+}; 
+export const validateMessageCreation = (req, res, next) => {
     const { content, sender, imageId } = req.body;
 
     if (!content || typeof content !== 'string') {
@@ -88,7 +89,8 @@ export const validateUserAccess = (req, res, next) => {
 
     req.body.content = content.trim();
     next();
-}; export const validateObjectId = (req, res, next) => {
+}; 
+export const validateObjectId = (req, res, next) => {
     const { id, chatId, messageId } = req.params;
     const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 

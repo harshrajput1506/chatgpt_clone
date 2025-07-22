@@ -5,18 +5,12 @@ export const getChats = async (req, res) => {
     try {
         const { uid } = req.query;
 
-        const whereClause = uid ? { uid } : {};
+        if (!uid) {
+            return res.status(400).json({ error: 'User ID (uid) is required' });
+        }
 
         const chats = await prisma.chat.findMany({
-            where: whereClause,
-            include: {
-                messages: {
-                    take: 1,
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                }
-            },
+            where: { uid },
             orderBy: {
                 createdAt: 'desc'
             }
@@ -25,7 +19,7 @@ export const getChats = async (req, res) => {
         res.json({
             chats,
             count: chats.length,
-            userId: uid || null
+            userId: uid
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -35,15 +29,17 @@ export const getChats = async (req, res) => {
 export const getChatById = async (req, res) => {
     try {
         const { id } = req.params;
-        const { uid } = req.query; // Optional: verify user owns this chat
+        const { uid } = req.query;
 
-        const whereClause = { id };
-        if (uid) {
-            whereClause.uid = uid;
+        if (!uid) {
+            return res.status(400).json({ error: 'User ID (uid) is required' });
         }
 
         const chat = await prisma.chat.findUnique({
-            where: whereClause,
+            where: {
+                id,
+                uid
+            },
             include: {
                 messages: {
                     include: {
@@ -58,7 +54,7 @@ export const getChatById = async (req, res) => {
 
         if (!chat) {
             return res.status(404).json({
-                error: uid ? 'Chat not found or access denied' : 'Chat not found'
+                error: 'Chat not found or access denied'
             });
         }
 
@@ -144,22 +140,23 @@ export const updateChat = async (req, res) => {
 export const deleteChat = async (req, res) => {
     try {
         const { id } = req.params;
-        const { uid } = req.query; // Optional: verify user owns this chat
+        const { uid } = req.query;
 
-        // Build where clause - include uid if provided for access control
-        const whereClause = { id };
-        if (uid) {
-            whereClause.uid = uid;
+        if (!uid) {
+            return res.status(400).json({ error: 'User ID (uid) is required' });
         }
 
         // Check if chat exists and user has access
         const existingChat = await prisma.chat.findUnique({
-            where: whereClause
+            where: {
+                id,
+                uid
+            }
         });
 
         if (!existingChat) {
             return res.status(404).json({
-                error: uid ? 'Chat not found or access denied' : 'Chat not found'
+                error: 'Chat not found or access denied'
             });
         }
 
@@ -188,39 +185,55 @@ export const generateTitleForChat = async (req, res) => {
         const { id } = req.params;
         const { uid } = req.query;
 
-        // Build where clause
-        const whereClause = { id };
-        if (uid) {
-            whereClause.uid = uid;
+        if (!uid) {
+            return res.status(400).json({ error: 'User ID (uid) is required' });
         }
 
-        // Get chat with messages
+        // Get chat with both user and assistant messages for better context
         const chat = await prisma.chat.findUnique({
-            where: whereClause,
+            where: {
+                id,
+                uid
+            },
             include: {
                 messages: {
-                    where: { sender: 'user' },
                     orderBy: { createdAt: 'asc' },
-                    take: 1
+                    take: 2 // Get first user message and first assistant response
                 }
             }
         });
 
         if (!chat) {
             return res.status(404).json({
-                error: uid ? 'Chat not found or access denied' : 'Chat not found'
+                error: 'Chat not found or access denied'
             });
         }
 
         if (chat.messages.length === 0) {
             return res.status(400).json({
+                error: 'No messages found to generate title from'
+            });
+        }
+
+        // Find first user message and first assistant response
+        const firstUserMessage = chat.messages.find(msg => msg.sender === 'user');
+        const firstAssistantMessage = chat.messages.find(msg => msg.sender === 'assistant');
+
+        if (!firstUserMessage) {
+            return res.status(400).json({
                 error: 'No user messages found to generate title from'
             });
         }
 
-        // Generate new title based on first user message
-        const firstMessage = chat.messages[0];
-        const newTitle = await generateChatTitle(firstMessage.content);
+        // Generate new title with conversation context if available
+        let contextForTitle;
+        if (firstAssistantMessage) {
+            contextForTitle = `User: ${firstUserMessage.content}\nAssistant: ${firstAssistantMessage.content}`;
+        } else {
+            contextForTitle = firstUserMessage.content;
+        }
+
+        const newTitle = await generateChatTitle(contextForTitle);
 
         // Update chat with new title
         const updatedChat = await prisma.chat.update({
@@ -233,7 +246,11 @@ export const generateTitleForChat = async (req, res) => {
             chat: updatedChat,
             oldTitle: chat.title,
             newTitle: newTitle,
-            basedOnMessage: firstMessage.content.substring(0, 100) + '...'
+            basedOnMessage: firstUserMessage.content.substring(0, 100) + '...',
+            ...(firstAssistantMessage && {
+                hasConversationContext: true,
+                assistantResponse: firstAssistantMessage.content.substring(0, 100) + '...'
+            })
         });
 
     } catch (error) {

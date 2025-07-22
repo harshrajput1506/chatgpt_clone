@@ -7,9 +7,9 @@
 
 ### Get All Chats
 - **GET** `/chats`
-- **Description**: Retrieves all chats (optionally filtered by user)
+- **Description**: Retrieves all chats for a specific user
 - **Query Parameters**:
-  - `uid` (string, optional): User ID to filter chats by user
+  - `uid` (string, required): User ID to filter chats by user
 - **Response**: 
   ```json
   {
@@ -23,7 +23,7 @@
       }
     ],
     "count": number,
-    "userId": "string or null"
+    "userId": "string"
   }
   ```
 
@@ -33,12 +33,12 @@
 - **Parameters**: 
   - `id` (string): Chat ID (MongoDB ObjectId)
 - **Query Parameters**:
-  - `uid` (string, optional): User ID for access control
+  - `uid` (string, required): User ID for access control
 - **Response**: Chat object with all messages and images
 
 ### Create Chat
 - **POST** `/chats`
-- **Description**: Creates a new chat (title will be auto-generated from first message)
+- **Description**: Creates a new chat (title will be auto-generated after first complete conversation)
 - **Body**:
   ```json
   {
@@ -57,7 +57,7 @@
       "messages": [],
       "createdAt": "datetime"
     },
-    "message": "Chat created successfully. Title will be auto-generated when first message is added."
+    "message": "Chat created successfully. Title will be auto-generated after first complete conversation (user message + AI response)."
   }
   ```
 
@@ -70,7 +70,7 @@
   ```json
   {
     "title": "Updated Chat Title",
-    "uid": "user123" // Optional: for access control
+    "uid": "user123" // Required: for access control
   }
   ```
 - **Response**: Updated chat object
@@ -81,16 +81,16 @@
 - **Parameters**:
   - `id` (string): Chat ID (MongoDB ObjectId)
 - **Query Parameters**:
-  - `uid` (string, optional): User ID for access control
+  - `uid` (string, required): User ID for access control
 - **Response**: 204 No Content
 
 ### Generate Chat Title
 - **POST** `/chats/:id/generate-title`
-- **Description**: Generates a new title for chat based on first user message
+- **Description**: Generates a new title for chat based on conversation context (user message + AI response if available)
 - **Parameters**:
   - `id` (string): Chat ID (MongoDB ObjectId)
 - **Query Parameters**:
-  - `uid` (string, optional): User ID for access control
+  - `uid` (string, required): User ID for access control
 - **Response**:
   ```json
   {
@@ -98,7 +98,9 @@
     "chat": {/* updated chat object */},
     "oldTitle": "string",
     "newTitle": "string",
-    "basedOnMessage": "string (first 100 chars of first message)"
+    "basedOnMessage": "string (first 100 chars of first user message)",
+    "hasConversationContext": boolean,
+    "assistantResponse": "string (first 100 chars of first AI response, if available)"
   }
   ```
 
@@ -116,7 +118,7 @@
 
 ### Create Message
 - **POST** `/chats/:chatId/messages`
-- **Description**: Creates a new message in a chat (with optional image and auto-title generation)
+- **Description**: Creates a new message in a chat (with optional image and auto-title generation after first complete conversation)
 - **Parameters**:
   - `chatId` (string): Chat ID (MongoDB ObjectId)
 - **Body**:
@@ -140,7 +142,7 @@
       "createdAt": "datetime"
     },
     "titleGenerated": boolean,
-    "newChatTitle": "string (if title was generated)"
+    "newChatTitle": "string (if title was generated after first AI response)"
   }
   ```
 

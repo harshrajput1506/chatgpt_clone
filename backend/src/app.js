@@ -20,13 +20,6 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
-// Set request timeout for file uploads (2 minutes)
-app.use('/api/images', (req, res, next) => {
-    req.setTimeout(120000); // 2 minutes
-    res.setTimeout(120000); // 2 minutes
-    next();
-});
-
 app.get('/', (req, res) => {
     res.send('Welcome to the ChatGPT Clone Backend!');
 });

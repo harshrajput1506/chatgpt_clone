@@ -1,3 +1,4 @@
+import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:equatable/equatable.dart';
 
@@ -30,4 +31,23 @@ class ChatLoaded extends ChatState {
 
   @override
   List<Object?> get props => [messages, errorMessage];
+}
+
+class ChatLoading extends ChatState {
+  @override
+  List<Object> get props => [];
+}
+
+class ChatsLoading extends ChatState {
+  @override
+  List<Object> get props => [];
+}
+
+class ChatsLoaded extends ChatState {
+  final List<Chat> chats;
+
+  ChatsLoaded(this.chats);
+
+  @override
+  List<Object> get props => [chats];
 }

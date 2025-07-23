@@ -9,6 +9,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc({required this.chatRepository}) : super(ChatInitial()) {
     // event handlers
     on<SendMessageEvent>(_onSendMessage);
+    on<LoadChatsEvent>(_onLoadChats);
   }
 
   Future<void> _onSendMessage(
@@ -61,6 +62,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       (message) {
         emit(ChatLoaded(messages: [...currentState.messages, message]));
       },
+    );
+  }
+
+  Future<void> _onLoadChats(LoadChatsEvent event, Emitter<ChatState> emit) async {
+    emit(ChatsLoading());
+    final result = await chatRepository.getAllChats();
+    result.fold(
+      (failure) => emit(ChatError(failure.message)),
+      (chats) => emit(ChatsLoaded(chats)),
     );
   }
 }

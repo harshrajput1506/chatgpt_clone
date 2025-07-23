@@ -15,13 +15,13 @@ Future<void> init() async {
   // Register services
   di.registerLazySingleton<CloudinaryService>(() => CloudinaryService());
   di.registerLazySingleton<MongoService>(
-    () => MongoService(di.get<Dio>(), 'https://your-mongo-api-url.com'),
+    () => MongoService(di.get<Dio>()),
   );
   di.registerLazySingleton<OpenAIService>(() => OpenAIService(di.get<Dio>()));
 
   // Register repositories
   di.registerLazySingleton<ChatRepository>(
-    () => ChatRepositoryImpl(openAIService: di<OpenAIService>()),
+    () => ChatRepositoryImpl(openAIService: di<OpenAIService>(), mongoService: di<MongoService>()),
   );
 
   // Register blocs

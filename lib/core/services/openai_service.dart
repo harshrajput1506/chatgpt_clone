@@ -1,40 +1,52 @@
+import 'package:chatgpt_clone/core/constants/app_url.dart';
 import 'package:dio/dio.dart';
 import 'package:logger/web.dart';
 import '../utils/failures.dart';
 
 class OpenAIService {
   final Dio _dio;
-  late final String _apiKey;
   final Logger _logger = Logger(printer: PrettyPrinter());
+  final String baseUrl = AppUrl.baseUrl;
+  OpenAIService(this._dio);
 
-  OpenAIService(this._dio) {
-    _apiKey = 'api-key-here';
-    _dio.options.headers['Authorization'] = 'Bearer $_apiKey';
-    _dio.options.headers['Content-Type'] = 'application/json';
-  }
-
-  Future<String> generateResponse(
-    List<Map<String, dynamic>> messages,
+  Future<Map<String, dynamic>> generateResponse(
+    String chatId,
     String model,
   ) async {
     try {
       final response = await _dio.post(
-        'https://api.openai.com/v1/chat/completions',
-        data: {'model': model, 'messages': messages, 'max_tokens': 1000},
+        '$baseUrl/ai/chats/$chatId/generate',
+        data: {'model': model},
       );
 
-      if (response.statusCode == 200) {
-        final content = response.data['choices'][0]['message']['content'];
-        _logger.i('Response generated successfully: $content');
-        if (content == null || content.isEmpty) {
-          _logger.e('Response content is empty');
-          throw ServerFailure('Response content is empty');
-        }
-        return content as String;
-      } else {
-        _logger.e('Failed to generate response: ${response.statusMessage}');
+      _logger.i(
+        'Response generated successfully: ${response.data}, status: ${response.statusCode}',
+      );
+
+      if (response.statusCode != 200) {
+        _logger.e('Failed to generate response: ${response.data}');
         throw ServerFailure('Failed to generate response');
       }
+
+      final data = response.data as Map<String, dynamic>?;
+      if (data == null || data['response'] == null) {
+        _logger.e('No response data returned from server');
+        throw ServerFailure('No response data returned from server');
+      }
+
+      if (data['success'] != true) {
+        _logger.e('Failed to generate response: ${data['message']}');
+        throw ServerFailure(data['message'] ?? 'Failed to generate response');
+      }
+
+      if (data['message']['sender'] != 'assistant') {
+        _logger.e(
+          'Unexpected sender in response: ${data['message']['sender']}',
+        );
+        throw ServerFailure('Unexpected sender in response');
+      }
+
+      return Map<String, dynamic>.from(data['message'] as Map<String, dynamic>);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {

@@ -47,5 +47,4 @@ app.*.map.json
 # md files
 DEVELOPMENT_GUIDE.md
 
-# env files
-config.env
+lib/core/constants/app_url.dart

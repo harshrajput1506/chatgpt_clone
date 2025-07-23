@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,6 +18,7 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void dispose() {
@@ -27,6 +29,9 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      drawerScrimColor: Theme.of(context).colorScheme.scrim,
+      drawer: const ChatDrawer(),
       body: SafeArea(
         child: BlocBuilder<ChatBloc, ChatState>(
           builder: (context, state) {
@@ -72,7 +77,10 @@ class _ChatPageState extends State<ChatPage> {
     return Row(
       children: [
         IconButton(
-          onPressed: () {},
+          onPressed: () {
+            // Open the chat drawer
+            _scaffoldKey.currentState?.openDrawer();
+          },
           icon: SvgPicture.asset(
             'assets/icons/menu.svg',
             width: 24,

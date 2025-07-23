@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  static const Color primary = Color(0xFF10A37F);
   static final ColorScheme lightColorScheme = ColorScheme(
     brightness: Brightness.light,
-    primary: Colors.white,
+    primary: primary,
     onPrimary: Colors.black,
     secondary: Colors.black,
     onSecondary: Colors.white,
@@ -13,26 +14,31 @@ class AppTheme {
     onSurface: Colors.black87,
     surfaceContainer: Colors.grey.shade200,
     onSurfaceVariant: Colors.black54,
-    inverseSurface: Colors.black87,
+    inverseSurface: Colors.black,
     onInverseSurface: Colors.white,
+    scrim: Colors.black26,
   );
 
   static final ColorScheme darkColorScheme = ColorScheme(
     brightness: Brightness.dark,
-    primary: Colors.white,
+    primary: primary,
     onPrimary: Colors.black,
     secondary: Colors.white,
     onSecondary: Colors.black,
     error: Colors.red.shade400,
     onError: Colors.black,
-    surface: Colors.black87,
+    surface: Colors.black,
     onSurface: Colors.white,
     surfaceContainer: Color(0xFF232325),
     onSurfaceVariant: Colors.white70,
+    inverseSurface: Colors.white,
+    onInverseSurface: Colors.black87,
+    scrim: Colors.white24,
   );
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
+    fontFamily: 'SF Pro Display',
     brightness: Brightness.light,
     colorScheme: lightColorScheme,
     appBarTheme: const AppBarTheme(
@@ -64,6 +70,7 @@ class AppTheme {
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
+    fontFamily: 'SF Pro Display',
     brightness: Brightness.dark,
     colorScheme: darkColorScheme,
     appBarTheme: const AppBarTheme(

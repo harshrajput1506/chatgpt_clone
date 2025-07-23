@@ -11,9 +11,6 @@ void main() async {
   // Setup dependencies
   sl.init();
 
-  // Initialize Hive
-  // await Hive.initFlutter();
-
   runApp(const MyApp());
 }
 

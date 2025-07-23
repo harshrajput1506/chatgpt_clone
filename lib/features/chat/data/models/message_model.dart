@@ -51,29 +51,12 @@ class MessageModel extends Message {
     return MessageModel(
       id: json['id'],
       content: json['content'],
-      type: MessageType.values.firstWhere((e) => e.name == json['type']),
-      role: MessageRole.values.firstWhere((e) => e.name == json['role']),
+      type: json['imageId'] != null ? MessageType.image : MessageType.text,
+      role: MessageRole.values.firstWhere((e) => e.name == json['sender']),
       timestamp: DateTime.parse(json['timestamp']),
       imageUrl: json['imageUrl'],
       isLoading: json['isLoading'] ?? false,
       hasError: json['hasError'] ?? false,
     );
-  }
-
-  Map<String, dynamic> toOpenAIFormat() {
-    if (type == MessageType.text) {
-      return {'role': role.name, 'content': content};
-    } else {
-      return {
-        'role': role.name,
-        'content': [
-          {'type': 'text', 'text': content},
-          {
-            'type': 'image_url',
-            'image_url': {'url': imageUrl},
-          },
-        ],
-      };
-    }
   }
 }

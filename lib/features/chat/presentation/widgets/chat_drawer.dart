@@ -1,43 +1,37 @@
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_bloc.dart';
-import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_event.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 
-class ChatDrawer extends StatefulWidget {
-  const ChatDrawer({super.key});
-
-  @override
-  State<ChatDrawer> createState() => _ChatDrawerState();
-}
-
-class _ChatDrawerState extends State<ChatDrawer> {
-  final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  var hasText = false; // Track if there's text in the input
-  var selectedChatIndex = -1; // Track selected chat index
-
-  @override
-  void initState() {
-    BlocProvider.of<ChatBloc>(context).add(LoadChatsEvent());
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
+class ChatDrawer extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool hasText; // Track if there's text in the input
+  final int selectedChatIndex; // Track selected chat index
+  final void Function(String) onValueChange;
+  final VoidCallback onClear;
+  final void Function(int, String) onChatTap;
+  final VoidCallback onNewChat;
+  const ChatDrawer({
+    super.key,
+    required this.controller,
+    required this.focusNode,
+    this.hasText = false,
+    this.selectedChatIndex = -1,
+    required this.onValueChange,
+    required this.onClear,
+    required this.onChatTap,
+    required this.onNewChat,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
       width:
-          _focusNode.hasFocus
+          focusNode.hasFocus
               ? MediaQuery.of(context).size.width
               : MediaQuery.of(context).size.width * 0.8,
       decoration: BoxDecoration(color: theme.colorScheme.surface),
@@ -55,26 +49,23 @@ class _ChatDrawerState extends State<ChatDrawer> {
                       borderRadius: BorderRadius.circular(32),
                     ),
                     child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      onChanged:
-                          (value) => setState(() {
-                            hasText = value.isNotEmpty;
-                          }),
+                      controller: controller,
+                      focusNode: focusNode,
+                      onChanged: (value) => onValueChange(value),
                       decoration: InputDecoration(
                         hintText: 'Search',
                         filled: false,
                         fillColor: theme.colorScheme.surfaceContainer,
                         prefixIcon: IconButton(
                           onPressed: () {
-                            if (_focusNode.hasFocus) {
-                              _focusNode.unfocus();
+                            if (focusNode.hasFocus) {
+                              focusNode.unfocus();
                             } else {
-                              _focusNode.requestFocus();
+                              focusNode.requestFocus();
                             }
                           },
                           icon:
-                              !_focusNode.hasFocus
+                              !focusNode.hasFocus
                                   ? SvgPicture.asset(
                                     'assets/icons/search.svg',
                                     colorFilter: ColorFilter.mode(
@@ -92,12 +83,7 @@ class _ChatDrawerState extends State<ChatDrawer> {
                                 ? IconButton(
                                   icon: Icon(Icons.clear),
                                   color: theme.colorScheme.onSurface,
-                                  onPressed: () {
-                                    _controller.clear();
-                                    setState(() {
-                                      hasText = false;
-                                    });
-                                  },
+                                  onPressed: onClear,
                                 )
                                 : null,
                       ),
@@ -117,7 +103,8 @@ class _ChatDrawerState extends State<ChatDrawer> {
                       ),
                     ),
                     onPressed: () {
-                      // New chat
+                      onNewChat();
+                      context.pop(); // Close the drawer
                     },
                   ),
                 const SizedBox(width: 8),
@@ -135,7 +122,10 @@ class _ChatDrawerState extends State<ChatDrawer> {
                     _buildChatTile(
                       context: context,
                       title: 'New Chat',
-                      onTap: () {},
+                      onTap: () {
+                        onNewChat();
+                        context.pop(); // Close the drawer
+                      },
                       iconAssetPath: 'assets/icons/edit.svg',
                     ),
 
@@ -146,43 +136,48 @@ class _ChatDrawerState extends State<ChatDrawer> {
                       iconAssetPath: 'assets/icons/chats.svg',
                     ),
 
-                    // list of chats without icons only 
+                    // list of chats without icons only
                     BlocBuilder<ChatBloc, ChatState>(
+                      buildWhen: (previous, current) {
+                        return current is ChatLoaded;
+                      },
                       builder: (context, state) {
-                        if (state is ChatsLoaded) {
+                        if (state is ChatLoaded &&
+                            state.isChatsLoading == false) {
+                          final chats =
+                              state.isSearching
+                                  ? state.searchResults
+                                  : state.chats;
                           return Column(
-                            children: state.chats.map((chat) {
-                              if (chat.title.isEmpty) {
-                                return _buildChatTile(
-                                  context: context,
-                                  title: 'New Chat',
-                                  onTap: () {
-                                    context.pop(); // Close the drawer
-                                  },
-                                  selected: true,
-                                );
-                              }
-                              return _buildChatTile(
-                                context: context,
-                                title: chat.title,
-                                onTap: () {
-                                  // Implement chat selection functionality
-                                  setState(() {
-                                    selectedChatIndex = state.chats.indexOf(chat);
-                                  });
-                                  // Close the drawer
-                                  context.pop();
-                                },
-                                selected: selectedChatIndex == state.chats.indexOf(chat),
-                              );
-                            }).toList(),
+                            children:
+                                chats.map((chat) {
+                                  return _buildChatTile(
+                                    context: context,
+                                    title: chat.title,
+                                    onTap: () {
+                                      // Implement chat selection functionality
+                                      onChatTap(
+                                        state.chats.indexOf(chat),
+                                        chat.id,
+                                      );
+                                      // Close the drawer
+                                      context.pop();
+                                    },
+                                    selected:
+                                        selectedChatIndex ==
+                                        state.chats.indexOf(chat),
+                                  );
+                                }).toList(),
                           );
-                        } else if (state is ChatsLoading) {
-                          return const Center(child: CircularProgressIndicator());
+                        } else if (state is ChatLoaded &&
+                            state.isChatsLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         return const SizedBox.shrink();
                       },
-                    ),         
+                    ),
                   ],
                 ),
               ),
@@ -231,10 +226,9 @@ class _ChatDrawerState extends State<ChatDrawer> {
                 softWrap: false,
                 textAlign: TextAlign.start,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
-                  fontSize: 16,
                 ),
               ),
             ),

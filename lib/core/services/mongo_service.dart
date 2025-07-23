@@ -38,6 +38,7 @@ class MongoService {
       }
       return Map<String, dynamic>.from(data['message'] as Map<String, dynamic>);
     } catch (e) {
+      _logger.e('Failed to save message: $e');
       throw ServerFailure('Failed to save message: $e');
     }
   }
@@ -70,6 +71,7 @@ class MongoService {
 
       return Map<String, dynamic>.from(data['chat'] as Map<String, dynamic>);
     } catch (e) {
+      _logger.e('Failed to save chat: $e');
       throw ServerFailure('Failed to save chat: $e');
     }
   }
@@ -92,6 +94,7 @@ class MongoService {
 
       return Map<String, dynamic>.from(response.data);
     } catch (e) {
+      _logger.e('Failed to fetch chat history: $e');
       throw ServerFailure('Failed to fetch chat history: $e');
     }
   }
@@ -122,6 +125,7 @@ class MongoService {
       _logger.i('Fetched ${chats.length} chats for user $uid');
       return List<Map<String, dynamic>>.from(chats);
     } catch (e) {
+      _logger.e('Failed to fetch chats: $e');
       throw ServerFailure('Failed to fetch chats: $e');
     }
   }
@@ -130,6 +134,7 @@ class MongoService {
     try {
       await _dio.delete('$baseUrl/chats/$chatId');
     } catch (e) {
+      _logger.e('Failed to delete chat: $e');
       throw ServerFailure('Failed to delete chat: $e');
     }
   }
@@ -152,6 +157,7 @@ class MongoService {
       final title = response.data['chat']['title'];
       return title as String? ?? 'New Chat';
     } catch (e) {
+      _logger.e('Failed to generate chat title: $e');
       throw ServerFailure('Failed to generate chat title');
     }
   }

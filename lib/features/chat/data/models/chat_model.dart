@@ -13,12 +13,14 @@ class ChatModel extends Chat {
       id: json['id'] as String,
       title: json['title'] as String,
       messages:
-          (json['messages'] as List<dynamic>)
-              .map(
-                (message) =>
-                    MessageModel.fromJson(message as Map<String, dynamic>),
-              )
-              .toList(),
+          json['messages'] == null
+              ? []
+              : (json['messages'] as List<dynamic>)
+                  .map(
+                    (message) =>
+                        MessageModel.fromJson(message as Map<String, dynamic>),
+                  )
+                  .toList(),
     );
   }
 }

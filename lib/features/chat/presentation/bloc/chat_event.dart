@@ -17,3 +17,30 @@ class LoadChatsEvent extends ChatEvent {
   List<Object> get props => [];
 }
 
+class LoadChatEvent extends ChatEvent {
+  final String chatId;
+
+  LoadChatEvent({required this.chatId});
+
+  @override
+  List<Object> get props => [chatId];
+}
+
+class GenerateChatTitleEvent extends ChatEvent {
+  @override
+  List<Object> get props => [];
+}
+
+class StartNewChatEvent extends ChatEvent {
+  @override
+  List<Object> get props => [];
+}
+
+class SearchChatEvent extends ChatEvent {
+  final String query;
+
+  SearchChatEvent(this.query);
+
+  @override
+  List<Object> get props => [query];
+}

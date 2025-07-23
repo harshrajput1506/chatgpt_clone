@@ -29,7 +29,7 @@ class OpenAIService {
       }
 
       final data = response.data as Map<String, dynamic>?;
-      if (data == null || data['response'] == null) {
+      if (data == null) {
         _logger.e('No response data returned from server');
         throw ServerFailure('No response data returned from server');
       }
@@ -62,6 +62,9 @@ class OpenAIService {
         _logger.e('Network error: ${e.message}');
         throw ServerFailure('Network error');
       }
+    } on ServerFailure catch (e) {
+      _logger.e('Serverfaiure error: $e');
+      throw ServerFailure(e.message);
     } catch (e) {
       _logger.e('Unexpected error: $e');
       throw ServerFailure('Unexpected error');

@@ -17,12 +17,25 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool hasText = false; // Track if there's text in the search input
+  var selectedChatIndex = -1; // Track selected chat index
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
+  void initState() {
+    // Initialize the chat drawer and load chats
+    BlocProvider.of<ChatBloc>(context).add(LoadChatsEvent());
+    super.initState();
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -31,15 +44,66 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       key: _scaffoldKey,
       drawerScrimColor: Theme.of(context).colorScheme.scrim,
-      drawer: const ChatDrawer(),
+      drawer: ChatDrawer(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        hasText: hasText,
+        selectedChatIndex: selectedChatIndex,
+        onValueChange: (value) {
+          setState(() {
+            hasText = value.isNotEmpty;
+          });
+          // Trigger search event
+          BlocProvider.of<ChatBloc>(context).add(SearchChatEvent(value));
+        },
+        onClear: () {
+          _searchController.clear();
+          // Clear search results
+          BlocProvider.of<ChatBloc>(context).add(SearchChatEvent(''));
+          setState(() {
+            hasText = false;
+          });
+        },
+        onChatTap: (index, chatId) {
+          setState(() {
+            selectedChatIndex = index;
+          });
+          // Load the selected chat
+          BlocProvider.of<ChatBloc>(context).add(LoadChatEvent(chatId: chatId));
+        },
+        onNewChat: () {
+          // Start a new chat
+          setState(() {
+            selectedChatIndex = -1; // Reset selected chat index
+          });
+          BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
+        },
+      ),
       body: SafeArea(
-        child: BlocBuilder<ChatBloc, ChatState>(
+        child: BlocConsumer<ChatBloc, ChatState>(
+          listener: (context, state) {
+            if (state is ChatError) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
+            }
+            if (state is ChatLoaded && state.errorMessage != null) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+            }
+          },
+          buildWhen: (previous, current) => current is ChatLoaded,
           builder: (context, state) {
             final messages =
                 state is ChatLoaded
-                    ? List<Message>.from(state.messages)
+                    ? state.currentChat?.messages ?? []
                     : <Message>[];
-            final isLoading = state is ChatLoaded && state.isLoading == true;
+            print('NewChatState: ${messages.isEmpty}');
+            final isResponding =
+                state is ChatLoaded && state.isResponding == true;
+            final isChatLoading =
+                state is ChatLoaded && state.isChatLoading == true;
             if (messages.isNotEmpty) {
               // Ensure the scroll position is at the bottom when loading
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,21 +112,21 @@ class _ChatPageState extends State<ChatPage> {
             }
             return Column(
               children: [
-                _buildAppBar(),
+                _buildAppBar(messages.isEmpty),
                 Expanded(
                   child:
-                      messages.isEmpty
+                      messages.isEmpty && !isChatLoading
                           ? _buildEmptyState()
-                          : _buildMessageList(messages),
+                          : _buildMessageList(messages, isChatLoading),
                 ),
-                if (isLoading) _buildTypingIndicator(),
+                if (isResponding) _buildTypingIndicator(),
                 MessageInput(
                   onSendMessage:
                       (content, model) => _sendMessage(context, content, model),
                   onSendImage:
                       (imagePath, caption, model) =>
                           _sendImageMessage(context, imagePath, caption),
-                  enabled: !isLoading,
+                  enabled: !isResponding,
                 ),
               ],
             );
@@ -72,7 +136,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(bool isNewChat) {
     final theme = Theme.of(context);
     return Row(
       children: [
@@ -91,46 +155,53 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
         ),
-        const SizedBox(width: 2),
+        const SizedBox(width: 4),
         Text(
           'ChatGPT',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+          style: theme.textTheme.headlineSmall?.copyWith(
             color: theme.colorScheme.onSurface,
           ),
         ),
         Spacer(),
-        IconButton(
-          icon: SvgPicture.asset(
-            'assets/icons/edit.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              theme.colorScheme.onSurfaceVariant,
-              BlendMode.srcIn,
+        if (!isNewChat) ...[
+          IconButton(
+            icon: SvgPicture.asset(
+              'assets/icons/edit.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                theme.colorScheme.onSurfaceVariant,
+                BlendMode.srcIn,
+              ),
+            ),
+            onPressed: () {
+              // Start a new chat
+              setState(() {
+                selectedChatIndex = -1; // Reset selected chat index
+              });
+              BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
+            },
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: SvgPicture.asset(
+              'assets/icons/three-dots.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                theme.colorScheme.onSurfaceVariant,
+                BlendMode.srcIn,
+              ),
             ),
           ),
-          onPressed: () {},
-        ),
-        IconButton(
-          onPressed: () {},
-          icon: SvgPicture.asset(
-            'assets/icons/three-dots.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              theme.colorScheme.onSurfaceVariant,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),
+        ],
       ],
     );
   }
 
   Widget _buildEmptyState() {
-    return const Center(
+    final theme = Theme.of(context);
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -138,19 +209,22 @@ class _ChatPageState extends State<ChatPage> {
           SizedBox(height: 16),
           Text(
             'Start a conversation',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
+            style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey),
           ),
           SizedBox(height: 8),
           Text(
             'Send a message to begin chatting',
-            style: TextStyle(color: Colors.grey),
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMessageList(List<Message> messages) {
+  Widget _buildMessageList(List<Message> messages, bool isLoading) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),

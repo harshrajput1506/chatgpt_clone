@@ -41,6 +41,21 @@ class AppTheme {
     fontFamily: 'SF Pro Display',
     brightness: Brightness.light,
     colorScheme: lightColorScheme,
+    textTheme: const TextTheme(
+      headlineSmall: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'SF Pro Display',
+      ),
+      bodyLarge: TextStyle(fontSize: 16, fontFamily: 'SF Pro Display'),
+      bodyMedium: TextStyle(fontSize: 14, fontFamily: 'SF Pro Display'),
+      bodySmall: TextStyle(fontSize: 12, fontFamily: 'SF Pro Display'),
+      labelSmall: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'SF Pro Display',
+      ),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: Colors.black87,
@@ -73,6 +88,21 @@ class AppTheme {
     fontFamily: 'SF Pro Display',
     brightness: Brightness.dark,
     colorScheme: darkColorScheme,
+    textTheme: const TextTheme(
+      headlineSmall: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'SF Pro Display',
+      ),
+      bodyLarge: TextStyle(fontSize: 16, fontFamily: 'SF Pro Display'),
+      bodyMedium: TextStyle(fontSize: 14, fontFamily: 'SF Pro Display'),
+      bodySmall: TextStyle(fontSize: 12, fontFamily: 'SF Pro Display'),
+      labelSmall: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'SF Pro Display',
+      ),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF2D2D30),
       foregroundColor: Colors.white,

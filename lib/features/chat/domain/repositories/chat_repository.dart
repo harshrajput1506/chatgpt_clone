@@ -1,10 +1,9 @@
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
-import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/utils/failures.dart';
 
 abstract class ChatRepository {
-  Future<Either<Failure, Message>> sendMessage({
+  Future<Either<Failure, Chat>> sendMessage({
     required String model,
     required String content,
     String chatId,

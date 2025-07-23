@@ -53,7 +53,7 @@ class MessageModel extends Message {
       content: json['content'],
       type: json['imageId'] != null ? MessageType.image : MessageType.text,
       role: MessageRole.values.firstWhere((e) => e.name == json['sender']),
-      timestamp: DateTime.parse(json['timestamp']),
+      timestamp: DateTime.parse(json['createdAt']),
       imageUrl: json['imageUrl'],
       isLoading: json['isLoading'] ?? false,
       hasError: json['hasError'] ?? false,

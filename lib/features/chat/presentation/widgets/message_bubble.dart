@@ -76,8 +76,7 @@ class MessageBubble extends StatelessWidget {
                                   padding: const EdgeInsets.only(left: 8.0),
                                   child: Text(
                                     name,
-                                    style: TextStyle(
-                                      fontSize: 14,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
                                       color: theme.colorScheme.onSurface,
                                     ),
                                   ),
@@ -95,7 +94,7 @@ class MessageBubble extends StatelessWidget {
                                   },
                                   label: Text(
                                     'Copy Code',
-                                    style: TextStyle(fontSize: 14),
+                                    style: theme.textTheme.bodyMedium,
                                   ),
                                   icon: Icon(
                                     Icons.copy,
@@ -118,8 +117,7 @@ class MessageBubble extends StatelessWidget {
                                   child: Text(
                                     code,
                                     textAlign: TextAlign.left,
-                                    style: TextStyle(
-                                      fontSize: 12,
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurface,
                                     ),
                                   ),
@@ -130,8 +128,7 @@ class MessageBubble extends StatelessWidget {
                         ),
                       );
                     },
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
@@ -139,8 +136,7 @@ class MessageBubble extends StatelessWidget {
                     message.role == MessageRole.user)
                   Text(
                     message.content,
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface,
                     ),
                   ),

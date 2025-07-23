@@ -11,6 +11,19 @@ class Chat extends Equatable {
     required this.title,
     this.messages = const [],
   });
+
+  Chat copyWith({
+    String? id,
+    String? title,
+    List<Message>? messages,
+  }) {
+    return Chat(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      messages: messages ?? this.messages,
+    );
+  }
+
   @override
   List<Object?> get props => [id, title, messages];
 }

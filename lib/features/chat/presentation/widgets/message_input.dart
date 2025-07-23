@@ -136,11 +136,8 @@ class _MessageInputState extends State<MessageInput> {
                           child: Text(
                             AppConstants.availableModels[selectedModelIndex],
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colorScheme.secondary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: colorScheme.secondary),
                           ),
                         ),
                         GestureDetector(
@@ -230,7 +227,7 @@ class _MessageInputState extends State<MessageInput> {
 
     widget.onSendMessage(
       content.trim(),
-      AppConstants.availableModels[selectedModelIndex] // Use selected model,
+      AppConstants.availableModels[selectedModelIndex], // Use selected model,
     );
     _controller.clear();
     _focusNode.requestFocus();

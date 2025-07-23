@@ -7,15 +7,16 @@ import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.dart';
 import 'package:chatgpt_clone/features/chat/data/models/message_model.dart';
 import 'package:dartz/dartz.dart';
+import 'package:logger/web.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   final OpenAIService openAIService;
   final MongoService mongoService;
+  final Logger _logger = Logger();
   ChatRepositoryImpl({required this.openAIService, required this.mongoService});
-  
 
   @override
-  Future<Either<Failure, MessageModel>> sendMessage({
+  Future<Either<Failure, Chat>> sendMessage({
     required String model,
     required String content,
     String? imageUrl,
@@ -24,13 +25,14 @@ class ChatRepositoryImpl implements ChatRepository {
   }) async {
     try {
       final uid = await UidHelper.getUid();
-      ChatModel chat;
       // check isNewChat to determine if we need to create a new chat or use an existing one
       if (isNewChat) {
         // Create a new chat
         final data = await mongoService.saveChat(uid);
-        chat = ChatModel.fromJson(data);
-        chatId = chat.id; // Update chatId with the newly created chat's ID
+        chatId =
+            ChatModel.fromJson(
+              data,
+            ).id; // Update chatId with the newly created chat's ID
       }
       // If not a new chat, ensure chatId is provided
       if (!isNewChat && chatId.isEmpty) {
@@ -44,13 +46,17 @@ class ChatRepositoryImpl implements ChatRepository {
       final response = await openAIService.generateResponse(chatId, model);
       final responseMessage = MessageModel.fromJson(response);
 
-      return Right(responseMessage);
+      final ChatModel chat = ChatModel(
+        id: chatId,
+        title: 'title',
+        messages: [responseMessage],
+      );
+
+      return Right(chat);
     } on Failure catch (e) {
       return Left(e);
     } catch (e) {
-      return Left(
-        ServerFailure('Failed to send message'),
-      );
+      return Left(ServerFailure('Failed to send message'));
     }
   }
 
@@ -60,9 +66,10 @@ class ChatRepositoryImpl implements ChatRepository {
       final uid = await UidHelper.getUid(); // Get the user ID
       // Fetch all chats from the MongoDB service
       final chatsData = await mongoService.getAllChats(uid);
-      final chats = (chatsData as List)
-          .map((chat) => ChatModel.fromJson(chat as Map<String, dynamic>))
-          .toList();
+      _logger.i('Fetched chats data: $chatsData');
+      final chats =
+          (chatsData).map((chat) => ChatModel.fromJson(chat)).toList();
+      _logger.i('Fetched ${chats.length} chats - $chats');
       return Right(chats);
     } catch (e) {
       return Left(ServerFailure('Failed to fetch all chats'));
@@ -81,9 +88,11 @@ class ChatRepositoryImpl implements ChatRepository {
       return Left(ServerFailure('Failed to fetch chat history'));
     }
   }
-  
+
   @override
-  Future<Either<Failure, String>> generateChatTitle({required String chatId}) async {
+  Future<Either<Failure, String>> generateChatTitle({
+    required String chatId,
+  }) async {
     try {
       final uid = await UidHelper.getUid(); // Get the user ID
       // Generate a chat title
@@ -91,6 +100,6 @@ class ChatRepositoryImpl implements ChatRepository {
       return Right(title);
     } catch (e) {
       return Left(ServerFailure('Failed to generate chat title'));
-    } 
+    }
   }
 }

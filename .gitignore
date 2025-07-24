@@ -46,5 +46,7 @@ app.*.map.json
 
 # md files
 DEVELOPMENT_GUIDE.md
+BO.md
+MBO.md
 
 lib/core/constants/app_url.dart

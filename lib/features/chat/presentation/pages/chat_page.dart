@@ -2,17 +2,21 @@ import 'package:chatgpt_clone/core/constants/app_constants.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/current_chat_bloc.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/image_upload_bloc.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_ui_cubit.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
-import '../bloc/chat_bloc.dart';
-import '../bloc/chat_event.dart';
-import '../bloc/chat_state.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart'
+    as chat_list;
+import 'package:chatgpt_clone/features/chat/presentation/bloc/current_chat_bloc.dart'
+    as current_chat;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -26,24 +30,18 @@ class _ChatPageState extends State<ChatPage> {
   final FocusNode _searchFocusNode = FocusNode();
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
-  bool hasText = false; // Track if there's text in the search input
-  var selectedChatIndex = -1; // Track selected chat index
-  var deltetingChatIndex = -1; // Track deleting chat index
-  var updatingChatIndex = -1; // Track updating chat index
+  bool hasText = false;
+  var selectedChatIndex = -1;
+  var deletetingChatIndex = -1;
+  var updatingChatIndex = -1;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Message input state
-  bool _showModelChange = false; // Show model change when input is empty
-  int _selectedModelIndex = 0; // Default to first model
-
-  bool _showImagePickerOptions = false; // Show image picker options
-
   @override
   void initState() {
-    // Initialize the chat drawer and load chats
-    BlocProvider.of<ChatBloc>(context).add(LoadChatsEvent());
     super.initState();
+    // Load chats on initialization
+    context.read<ChatListBloc>().add(LoadChatsEvent());
   }
 
   @override
@@ -61,335 +59,222 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       key: _scaffoldKey,
       drawerScrimColor: Theme.of(context).colorScheme.scrim,
-      drawer: ChatDrawer(
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        hasText: hasText,
-        selectedChatIndex: selectedChatIndex,
-        deltetingChatIndex: deltetingChatIndex,
-        updatingChatIndex: updatingChatIndex,
-        onValueChange: (value) {
-          setState(() {
-            hasText = value.isNotEmpty;
-          });
-          // Trigger search event
-          BlocProvider.of<ChatBloc>(context).add(SearchChatEvent(value));
-        },
-        onClear: () {
-          _searchController.clear();
-          // Clear search results
-          BlocProvider.of<ChatBloc>(context).add(SearchChatEvent(''));
-          setState(() {
-            hasText = false;
-          });
-        },
-        onChatTap: (index, chatId) {
-          setState(() {
-            selectedChatIndex = index;
-          });
-          // Load the selected chat
-          BlocProvider.of<ChatBloc>(context).add(LoadChatEvent(chatId: chatId));
-        },
-        onNewChat: () {
-          // Start a new chat
-          setState(() {
-            selectedChatIndex = -1; // Reset selected chat index
-          });
-          BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
-        },
-        onRenameChat: (chatId, index, title) {
-          _showRenameDialog(chatId, index, title);
-        },
-        onDeleteChat: (chatId, index) {
-          _showDeleteDialog(chatId, index);
-        },
-      ),
+      drawer: _buildDrawer(),
       body: SafeArea(
-        child: BlocConsumer<ChatBloc, ChatState>(
-          listener: (context, state) {
-            if (state is ChatError) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.message)));
-            }
-            if (state is ChatLoaded && state.errorMessage != null) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
-            }
-            if (state is ChatLoaded && state.error != null) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.error!)));
-            }
-            if (state is ChatLoaded && state.hasDeletedChat) {
-              setState(() {
-                deltetingChatIndex = -1; // Reset deleting chat index
-              });
-            }
-            if (state is ChatLoaded && state.hasUpdatedTitle) {
-              setState(() {
-                updatingChatIndex = -1; // Reset updating chat index
-              });
-            }
-          },
-          buildWhen: (previous, current) => current is ChatLoaded,
-          builder: (context, state) {
-            final messages =
-                state is ChatLoaded
-                    ? state.currentChat?.messages ?? []
-                    : <Message>[];
-            print('NewChatState: ${messages.isEmpty}');
-            final isResponding =
-                state is ChatLoaded && state.isResponding == true;
-            final isRegenerating =
-                state is ChatLoaded && state.isRegenerating == true;
-            final isChatLoading =
-                state is ChatLoaded && state.isChatLoading == true;
-            final isImageUploading =
-                state is ChatLoaded && state.isImageUploading == true;
-            final pickedImagePath =
-                state is ChatLoaded ? state.pickedImagePath : null;
-            final pickedImage = state is ChatLoaded ? state.pickedImage : null;
-
-            // debug print all state properties
-            debugPrint(
-              'ChatState: isResponding: $isResponding, isRegenerating: $isRegenerating, isChatLoading: $isChatLoading, isImageUploading: $isImageUploading, pickedImagePath: $pickedImagePath, pickedImage: $pickedImage',
-            );
-
-            if (messages.isNotEmpty) {
-              // Ensure the scroll position is at the bottom when loading
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _scrollToBottom();
-              });
-            }
-            return Column(
-              children: [
-                _buildAppBar(
-                  messages.isEmpty,
-                  state is ChatLoaded ? state.currentChat : null,
-                ),
-                Expanded(
-                  child:
-                      messages.isEmpty && !isChatLoading
-                          ? _buildEmptyState()
-                          : _buildMessageList(messages, isChatLoading),
-                ),
-                if (isResponding) _buildTypingIndicator(),
-                if (isRegenerating) _buildRegeneratingIndicator(),
-                MessageInput(
-                  controller: _messageController,
-                  focusNode: _messageFocusNode,
-                  showModelChange: _showModelChange,
-                  selectedModelIndex: _selectedModelIndex,
-                  showImagePickerOptions: _showImagePickerOptions,
-                  isImageUploading: isImageUploading,
-                  pickedImagePath: pickedImagePath,
-                  pickedImage: pickedImage,
-                  onToggleModelChange: () {
-                    setState(() {
-                      _showImagePickerOptions =
-                          false; // Hide image picker options
-                      _showModelChange = !_showModelChange;
-                    });
-                  },
-                  onToggleImagePickerOptions: () {
-                    setState(() {
-                      _showModelChange = false; // Hide model change
-                      _showImagePickerOptions = !_showImagePickerOptions;
-                    });
-                  },
-                  onModelSelected: (index) {
-                    setState(() {
-                      _selectedModelIndex = index;
-                      _showModelChange = false; // Hide after selection
-                    });
-                  },
-                  onTextChanged: (value) {
-                    setState(() {
-                      // This will trigger rebuild to show/hide send button
-                    });
-                  },
-                  onSendMessage:
-                      (content, model) => _sendMessage(context, content, model),
-                  onSendImageMessage:
-                      (content, model, image) =>
-                          _sendImageMessage(context, content, model, image),
-                  enabled: !isResponding && !isRegenerating,
-                  onPickImage: (source) {
-                    if (!isResponding &&
-                        !isRegenerating &&
-                        _showImagePickerOptions) {
-                      _pickImage(source);
-                      setState(() {
-                        _showImagePickerOptions =
-                            false; // Hide options after pick
-                      });
-                    }
-                  },
-                ),
-              ],
-            );
-          },
+        child: Column(
+          children: [
+            _buildAppBar(),
+            Expanded(child: _buildChatArea()),
+            _buildTypingIndicators(),
+            _buildMessageInput(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildAppBar(bool isNewChat, Chat? chat) {
-    final controller = MenuController();
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () {
-              // Open the chat drawer
-              _scaffoldKey.currentState?.openDrawer();
+  Widget _buildDrawer() {
+    return BlocListener<ChatListBloc, ChatListState>(
+      listener: (context, state) {
+        // Reset loading indicators when operations complete (success or error)
+        if (state is ChatListLoaded || state is ChatListError) {
+          setState(() {
+            deletetingChatIndex = -1;
+            updatingChatIndex = -1;
+          });
+        }
+      },
+      child: BlocBuilder<ChatListBloc, ChatListState>(
+        builder: (context, chatListState) {
+          return ChatDrawer(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            hasText: hasText,
+            selectedChatIndex: selectedChatIndex,
+            deletetingChatIndex: deletetingChatIndex,
+            updatingChatIndex: updatingChatIndex,
+            onValueChange: (value) {
+              setState(() {
+                hasText = value.isNotEmpty;
+              });
+              context.read<ChatListBloc>().add(SearchChatsEvent(value));
             },
-            icon: SvgPicture.asset(
-              'assets/icons/menu.svg',
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurface,
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'ChatGPT',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          Spacer(),
-          if (!isNewChat) ...[
-            IconButton(
-              icon: SvgPicture.asset(
-                'assets/icons/edit.svg',
-                width: 24,
-                height: 24,
-                colorFilter: ColorFilter.mode(
-                  theme.colorScheme.onSurfaceVariant,
-                  BlendMode.srcIn,
-                ),
-              ),
-              onPressed: () {
-                // Start a new chat
-                setState(() {
-                  selectedChatIndex = -1; // Reset selected chat index
-                });
-                BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
-              },
-            ),
-            OptionsMenu(
-              menuController: controller,
-              menuItems: [
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    child: Text(
-                      chat != null && chat.title.isNotEmpty
-                          ? chat.title
-                          : 'New Chat',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
-                Divider(color: theme.colorScheme.onSurfaceVariant),
-                MenuItemButton(
-                  leadingIcon: SvgPicture.asset(
-                    'assets/icons/rename.svg',
-                    width: 20,
-                    height: 20,
-                    fit: BoxFit.fill,
-                    colorFilter: ColorFilter.mode(
-                      theme.colorScheme.onSurface,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  onPressed:
-                      chat != null
-                          ? () {
-                            // Close the menu first
-                            controller.close();
-                            // Call the same rename logic as in drawer
-                            _showRenameDialog(
-                              chat.id,
-                              selectedChatIndex,
-                              chat.title,
-                            );
-                          }
-                          : null,
-                  child: Text(
-                    'Rename',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-
-                MenuItemButton(
-                  leadingIcon: SvgPicture.asset(
-                    'assets/icons/delete.svg',
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.fill,
-                    colorFilter: ColorFilter.mode(
-                      theme.colorScheme.error,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  onPressed:
-                      chat != null
-                          ? () {
-                            // Close the menu first
-                            controller.close();
-                            // Call the same delete logic as in drawer
-                            _showDeleteDialog(chat.id, selectedChatIndex);
-                          }
-                          : null,
-                  child: Text(
-                    'Delete',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-              ],
-              child: IconButton(
-                onPressed: () {
-                  if (controller.isOpen) {
-                    controller.close();
-                  } else {
-                    controller.open();
-                  }
-                },
-                icon: SvgPicture.asset(
-                  'assets/icons/three-dots.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter: ColorFilter.mode(
-                    theme.colorScheme.onSurfaceVariant,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+            onClear: () {
+              _searchController.clear();
+              context.read<ChatListBloc>().add(SearchChatsEvent(''));
+              setState(() {
+                hasText = false;
+              });
+            },
+            onChatTap: (index, chatId) {
+              setState(() {
+                selectedChatIndex = index;
+              });
+              context.read<CurrentChatBloc>().add(
+                LoadChatEvent(chatId: chatId),
+              );
+              Navigator.of(context).pop();
+            },
+            onNewChat: () {
+              setState(() {
+                selectedChatIndex = -1;
+              });
+              context.read<CurrentChatBloc>().add(StartNewChatEvent());
+              Navigator.of(context).pop();
+            },
+            onRenameChat: (chatId, index, title) {
+              _showRenameDialog(chatId, index, title);
+            },
+            onDeleteChat: (chatId, index) {
+              _showDeleteDialog(chatId, index);
+            },
+          );
+        },
       ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return BlocBuilder<CurrentChatBloc, CurrentChatState>(
+      builder: (context, state) {
+        final isNewChat = state is CurrentChatLoaded && state.isNewChat;
+        final chat = state is CurrentChatLoaded ? state.chat : null;
+
+        return _AppBarWidget(
+          isNewChat: isNewChat,
+          chat: chat,
+          onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+          onNewChatTap: () {
+            setState(() {
+              selectedChatIndex = -1;
+            });
+            context.read<CurrentChatBloc>().add(StartNewChatEvent());
+          },
+          onRenameTap:
+              chat != null
+                  ? () => _showRenameDialog(chat.id, -1, chat.title)
+                  : null,
+          onDeleteTap:
+              chat != null ? () => _showDeleteDialog(chat.id, -1) : null,
+        );
+      },
+    );
+  }
+
+  Widget _buildChatArea() {
+    return BlocBuilder<CurrentChatBloc, CurrentChatState>(
+      builder: (context, state) {
+        if (state is CurrentChatLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (state is CurrentChatError) {
+          return Center(
+            child: Text(
+              'Error: ${state.message}',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          );
+        }
+
+        if (state is CurrentChatLoaded) {
+          final messages = state.messages;
+
+          if (messages.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          // Auto-scroll to bottom when new messages arrive
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+          });
+
+          return ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(16),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              return MessageBubble(
+                message: message,
+                onRegenerate:
+                    message.role == MessageRole.assistant && !message.hasError
+                        ? () => _regenerateResponse(message.id)
+                        : null,
+              );
+            },
+          );
+        }
+
+        return _buildEmptyState();
+      },
+    );
+  }
+
+  Widget _buildTypingIndicators() {
+    return BlocBuilder<CurrentChatBloc, CurrentChatState>(
+      buildWhen: (previous, current) {
+        if (previous is CurrentChatLoaded && current is CurrentChatLoaded) {
+          return previous.isResponding != current.isResponding ||
+              previous.isRegenerating != current.isRegenerating;
+        }
+        return true;
+      },
+      builder: (context, state) {
+        if (state is CurrentChatLoaded) {
+          if (state.isResponding) {
+            return _buildIndicator('Responding...');
+          }
+          if (state.isRegenerating) {
+            return _buildIndicator('Regenerating response...');
+          }
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildMessageInput() {
+    return BlocBuilder<ChatUICubit, ChatUIState>(
+      builder: (context, uiState) {
+        return BlocBuilder<ImageUploadBloc, ImageUploadState>(
+          builder: (context, uploadState) {
+            return BlocBuilder<CurrentChatBloc, CurrentChatState>(
+              buildWhen: (previous, current) {
+                if (previous is CurrentChatLoaded &&
+                    current is CurrentChatLoaded) {
+                  return previous.isResponding != current.isResponding ||
+                      previous.isRegenerating != current.isRegenerating;
+                }
+                return true;
+              },
+              builder: (context, chatState) {
+                final isDisabled =
+                    chatState is CurrentChatLoaded &&
+                    (chatState.isResponding || chatState.isRegenerating);
+
+                return MessageInput(
+                  controller: _messageController,
+                  focusNode: _messageFocusNode,
+                  onTextChanged: (value) {
+                    setState(() {
+                      // Trigger rebuild for send button
+                    });
+                  },
+                  onSendMessage:
+                      (content, model) => _sendMessage(content, model),
+                  onSendImageMessage:
+                      (content, model, image) =>
+                          _sendImageMessage(content, model, image),
+                  enabled: !isDisabled,
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -410,35 +295,14 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageList(List<Message> messages, bool isLoading) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        return MessageBubble(
-          message: message,
-          onRegenerate:
-              message.role == MessageRole.assistant && !message.hasError
-                  ? () => _regenerateResponse(context, message.id)
-                  : null,
-        );
-      },
-    );
-  }
-
-  Widget _buildTypingIndicator() {
+  Widget _buildIndicator(String text) {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: const Row(
+      child: Row(
         children: [
-          Text('Responding...'),
-          SizedBox(width: 8),
-          SizedBox(
+          Text(text),
+          const SizedBox(width: 8),
+          const SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(strokeWidth: 2),
@@ -448,41 +312,20 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildRegeneratingIndicator() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: const Row(
-        children: [
-          Text('Regenerating response...'),
-          SizedBox(width: 8),
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _sendMessage(BuildContext context, String content, String model) {
+  void _sendMessage(String content, String model) {
     if (content.trim().isEmpty) return;
-    // You may want to pass the selected model from UI
-    BlocProvider.of<ChatBloc>(context).add(SendMessageEvent(content, model));
+
+    context.read<CurrentChatBloc>().add(SendMessageEvent(content, model));
+
+    // Clear image after sending
+    context.read<ImageUploadBloc>().add(ClearImageEvent());
     _messageController.clear();
     _messageFocusNode.requestFocus();
     _scrollToBottom();
   }
 
-  void _sendImageMessage(
-    BuildContext context,
-    String content,
-    String model,
-    ChatImage image,
-  ) {
-    // Implement image message event if needed in ChatBloc
-    print('Sending image message: $content, model: $model, image: ${image.id}');
-    BlocProvider.of<ChatBloc>(context).add(
+  void _sendImageMessage(String content, String model, ChatImage image) {
+    context.read<CurrentChatBloc>().add(
       SendMessageEvent(
         content,
         model,
@@ -490,17 +333,22 @@ class _ChatPageState extends State<ChatPage> {
         imageUrl: image.originalUrl,
       ),
     );
+
+    // Clear image after sending
+    context.read<ImageUploadBloc>().add(ClearImageEvent());
+    _messageController.clear();
+    _messageFocusNode.requestFocus();
+    _scrollToBottom();
   }
 
-  void _pickImage(ImageSource source) {
-    BlocProvider.of<ChatBloc>(context).add(PickImageEvent(source: source));
-  }
+  void _regenerateResponse(String messageId) {
+    final selectedModel =
+        AppConstants.availableModels[context
+            .read<ChatUICubit>()
+            .state
+            .selectedModelIndex];
 
-  void _regenerateResponse(BuildContext context, String messageId) {
-    // Use the first model as default (same as the input widget default)
-    String selectedModel = AppConstants.availableModels[_selectedModelIndex];
-
-    context.read<ChatBloc>().add(
+    context.read<CurrentChatBloc>().add(
       RegenerateResponseEvent(messageId: messageId, model: selectedModel),
     );
   }
@@ -537,16 +385,12 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 autofocus: true,
                 onChanged: (value) {
-                  setDialogState(() {
-                    // This will rebuild the dialog with the new enabled state
-                  });
+                  setDialogState(() {});
                 },
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
+                  onPressed: () => Navigator.of(context).pop(),
                   child: Text(
                     'Cancel',
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -556,19 +400,23 @@ class _ChatPageState extends State<ChatPage> {
                   onPressed:
                       enabled
                           ? () {
-                            // Dispatch update chat title event
-                            BlocProvider.of<ChatBloc>(context).add(
-                              UpdateChatTitleEvent(
+                            // Update in both chat list and current chat
+                            context.read<ChatListBloc>().add(
+                              chat_list.UpdateChatTitleEvent(
                                 chatId: chatId,
                                 title: titleController.text,
                               ),
                             );
+
+                            context.read<CurrentChatBloc>().add(
+                              current_chat.UpdateChatTitleEvent(
+                                titleController.text,
+                              ),
+                            );
+
                             Navigator.of(context).pop();
                             setState(() {
-                              updatingChatIndex =
-                                  index; // Set updating chat index
-                              selectedChatIndex =
-                                  -1; // Reset selected chat index
+                              updatingChatIndex = index;
                             });
                           }
                           : null,
@@ -576,10 +424,6 @@ class _ChatPageState extends State<ChatPage> {
                     'Rename',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color:
-                          enabled
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -600,9 +444,7 @@ class _ChatPageState extends State<ChatPage> {
           content: const Text('Are you sure you want to delete this chat?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
+              onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Cancel',
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -610,14 +452,21 @@ class _ChatPageState extends State<ChatPage> {
             ),
             TextButton(
               onPressed: () {
-                // Dispatch delete chat event
-                BlocProvider.of<ChatBloc>(
-                  context,
-                ).add(DeleteChatEvent(chatId: chatId));
+                context.read<ChatListBloc>().add(
+                  DeleteChatEvent(chatId: chatId),
+                );
+
+                // If deleting current chat, start new chat
+                final currentChatState = context.read<CurrentChatBloc>().state;
+                if (currentChatState is CurrentChatLoaded &&
+                    currentChatState.chat?.id == chatId) {
+                  context.read<CurrentChatBloc>().add(StartNewChatEvent());
+                }
+
                 Navigator.of(context).pop();
                 setState(() {
-                  deltetingChatIndex = index; // Set deleting chat index
-                  selectedChatIndex = -1; // Reset selected chat index
+                  deletetingChatIndex = index;
+                  selectedChatIndex = -1;
                 });
               },
               child: Text(
@@ -631,6 +480,146 @@ class _ChatPageState extends State<ChatPage> {
           ],
         );
       },
+    );
+  }
+}
+
+// Separate widget for app bar to optimize rebuilds
+class _AppBarWidget extends StatelessWidget {
+  final bool isNewChat;
+  final Chat? chat;
+  final VoidCallback onMenuTap;
+  final VoidCallback onNewChatTap;
+  final VoidCallback? onRenameTap;
+  final VoidCallback? onDeleteTap;
+
+  const _AppBarWidget({
+    required this.isNewChat,
+    required this.chat,
+    required this.onMenuTap,
+    required this.onNewChatTap,
+    this.onRenameTap,
+    this.onDeleteTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = MenuController();
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onMenuTap,
+            icon: SvgPicture.asset(
+              'assets/icons/menu.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                theme.colorScheme.onSurface,
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'ChatGPT',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const Spacer(),
+          if (!isNewChat) ...[
+            IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/edit.svg',
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  theme.colorScheme.onSurfaceVariant,
+                  BlendMode.srcIn,
+                ),
+              ),
+              onPressed: onNewChatTap,
+            ),
+            OptionsMenu(
+              menuController: controller,
+              menuItems: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      chat?.title ?? '',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                Divider(color: theme.colorScheme.onSurfaceVariant),
+                MenuItemButton(
+                  leadingIcon: SvgPicture.asset(
+                    'assets/icons/rename.svg',
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.fill,
+                    colorFilter: ColorFilter.mode(
+                      theme.colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  onPressed: onRenameTap,
+                  child: Text(
+                    'Rename',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                MenuItemButton(
+                  leadingIcon: SvgPicture.asset(
+                    'assets/icons/delete.svg',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.fill,
+                    colorFilter: ColorFilter.mode(
+                      theme.colorScheme.error,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  onPressed: onDeleteTap,
+                  child: Text(
+                    'Delete',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+              child: IconButton(
+                onPressed: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                icon: SvgPicture.asset(
+                  'assets/icons/three-dots.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: ColorFilter.mode(
+                    theme.colorScheme.onSurfaceVariant,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

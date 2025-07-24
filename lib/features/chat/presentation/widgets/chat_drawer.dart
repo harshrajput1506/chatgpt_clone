@@ -1,6 +1,4 @@
-import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_bloc.dart';
-import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_state.dart';
-import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
+import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
@@ -9,325 +7,352 @@ import 'package:go_router/go_router.dart';
 class ChatDrawer extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
-  final bool hasText; // Track if there's text in the input
-  final int selectedChatIndex; // Track selected chat index
-  final int deltetingChatIndex; // Track deleting chat index
-  final int updatingChatIndex; // Track updating chat index
-  final void Function(String) onValueChange;
+  final bool hasText;
+  final int selectedChatIndex;
+  final int deletetingChatIndex;
+  final int updatingChatIndex;
+  final Function(String) onValueChange;
   final VoidCallback onClear;
-  final void Function(int, String) onChatTap;
+  final Function(int, String) onChatTap;
   final VoidCallback onNewChat;
-  final void Function(String, int, String) onRenameChat;
-  final void Function(String, int) onDeleteChat;
+  final Function(String, int, String) onRenameChat;
+  final Function(String, int) onDeleteChat;
+
   const ChatDrawer({
     super.key,
     required this.controller,
     required this.focusNode,
-    this.hasText = false,
-    this.selectedChatIndex = -1,
+    required this.hasText,
+    required this.selectedChatIndex,
+    required this.deletetingChatIndex,
+    required this.updatingChatIndex,
     required this.onValueChange,
     required this.onClear,
     required this.onChatTap,
     required this.onNewChat,
     required this.onRenameChat,
     required this.onDeleteChat,
-    this.deltetingChatIndex = -1,
-    this.updatingChatIndex = -1,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width:
-          focusNode.hasFocus
-              ? MediaQuery.of(context).size.width
-              : MediaQuery.of(context).size.width * 0.8,
-      decoration: BoxDecoration(color: theme.colorScheme.surface),
+
+    return Drawer(
       child: SafeArea(
         child: Column(
           children: [
-            // Search bar
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(32),
-                    ),
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      onChanged: (value) => onValueChange(value),
-                      decoration: InputDecoration(
-                        hintText: 'Search',
-                        filled: false,
-                        fillColor: theme.colorScheme.surfaceContainer,
-                        prefixIcon: IconButton(
-                          onPressed: () {
-                            if (focusNode.hasFocus) {
-                              focusNode.unfocus();
-                            } else {
-                              focusNode.requestFocus();
-                            }
-                          },
-                          icon:
-                              !focusNode.hasFocus
-                                  ? SvgPicture.asset(
-                                    'assets/icons/search.svg',
-                                    colorFilter: ColorFilter.mode(
-                                      theme.colorScheme.onSurface,
-                                      BlendMode.srcIn,
-                                    ),
-                                  )
-                                  : Icon(
-                                    Icons.arrow_back_rounded,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                        ),
-                        suffixIcon:
-                            hasText
-                                ? IconButton(
-                                  icon: Icon(Icons.clear),
-                                  color: theme.colorScheme.onSurface,
-                                  onPressed: onClear,
-                                )
-                                : null,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // New chat button
-                if (!hasText)
-                  IconButton(
-                    icon: SvgPicture.asset(
-                      'assets/icons/edit.svg',
-                      colorFilter: ColorFilter.mode(
-                        theme.colorScheme.onSurface,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    onPressed: () {
-                      onNewChat();
-                      context.pop(); // Close the drawer
-                    },
-                  ),
-                const SizedBox(width: 8),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Scroll view
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // new chat tile button
-                    _buildChatTile(
-                      context: context,
-                      title: 'New Chat',
-                      onTap: () {
-                        onNewChat();
-                        context.pop(); // Close the drawer
-                      },
-                      iconAssetPath: 'assets/icons/edit.svg',
-                    ),
-
-                    _buildChatTile(
-                      context: context,
-                      title: 'Chats',
-                      onTap: () {}, // Placeholder for chats
-                      iconAssetPath: 'assets/icons/chats.svg',
-                    ),
-
-                    // list of chats without icons only
-                    BlocBuilder<ChatBloc, ChatState>(
-                      buildWhen: (previous, current) {
-                        return current is ChatLoaded;
-                      },
-                      builder: (context, state) {
-                        if (state is ChatLoaded &&
-                            state.isChatsLoading == false) {
-                          final chats =
-                              state.isSearching
-                                  ? state.searchResults
-                                  : state.chats;
-                          return Column(
-                            children:
-                                chats.map((chat) {
-                                  return _buildChatTile(
-                                    context: context,
-                                    title: chat.title,
-                                    onTap: () {
-                                      // Implement chat selection functionality
-                                      onChatTap(
-                                        state.chats.indexOf(chat),
-                                        chat.id,
-                                      );
-                                      // Close the drawer
-                                      context.pop();
-                                    },
-                                    onRenameChat: () {
-                                      onRenameChat(
-                                        chat.id,
-                                        state.chats.indexOf(chat),
-                                        chat.title,
-                                      );
-                                    },
-                                    onDeleteChat: () {
-                                      onDeleteChat(
-                                        chat.id,
-                                        state.chats.indexOf(chat),
-                                      );
-                                    },
-                                    selected:
-                                        selectedChatIndex ==
-                                        state.chats.indexOf(chat),
-                                    isUpdating:
-                                        updatingChatIndex ==
-                                            state.chats.indexOf(chat) ||
-                                        deltetingChatIndex ==
-                                            state.chats.indexOf(chat),
-                                  );
-                                }).toList(),
-                          );
-                        } else if (state is ChatLoaded &&
-                            state.isChatsLoading) {
-                          return const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildHeader(context, theme),
+            _buildSearchField(theme),
+            _buildNewChatButton(theme),
+            _buildChatsList(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatTile({
-    required BuildContext context,
-    required String title,
-    required VoidCallback onTap,
-    VoidCallback? onRenameChat,
-    VoidCallback? onDeleteChat,
-    String? iconAssetPath,
-    bool selected = false,
-    bool isUpdating = false,
-  }) {
-    final theme = Theme.of(context);
-    final controller = MenuController();
-    return OptionsMenu(
-      menuController: controller,
-      alignmentOffset: Offset(MediaQuery.of(context).size.width * 0.25, 0),
-      menuItems: [
-        MenuItemButton(
-          leadingIcon: SvgPicture.asset(
-            'assets/icons/rename.svg',
-            width: 20,
-            height: 20,
-            fit: BoxFit.fill,
-            colorFilter: ColorFilter.mode(
-              theme.colorScheme.onSurface,
-              BlendMode.srcIn,
-            ),
-          ),
-          onPressed: onRenameChat,
-          child: Text(
-            'Rename',
-            style: theme.textTheme.bodyMedium?.copyWith(
+  Widget _buildHeader(BuildContext context, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Text(
+            'Conversations',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),
-        ),
+          const Spacer(),
+          IconButton(
+            onPressed: () => context.pop(),
+            icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
+          ),
+        ],
+      ),
+    );
+  }
 
-        MenuItemButton(
-          leadingIcon: SvgPicture.asset(
-            'assets/icons/delete.svg',
-            width: 24,
-            height: 24,
-            fit: BoxFit.fill,
-            colorFilter: ColorFilter.mode(
-              theme.colorScheme.error,
-              BlendMode.srcIn,
-            ),
+  Widget _buildSearchField(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onValueChange,
+        decoration: InputDecoration(
+          hintText: 'Search conversations',
+          prefixIcon: Icon(
+            Icons.search,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          onPressed: onDeleteChat,
-          child: Text(
-            'Delete',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.error,
-            ),
+          suffixIcon:
+              hasText
+                  ? IconButton(
+                    onPressed: onClear,
+                    icon: Icon(
+                      Icons.clear,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                  : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: theme.colorScheme.outline),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: theme.colorScheme.outline),
           ),
         ),
-      ],
-      child: Material(
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: () {
-            if (controller.isOpen) {
-              controller.close(); // Close if already open
-            } else {
-              controller.open(); // Open the menu on long press
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color:
-                  selected
-                      ? Theme.of(context).colorScheme.surfaceContainer
-                      : Colors.transparent,
-            ),
-            child: Row(
-              children: [
-                if (iconAssetPath != null) ...[
-                  SvgPicture.asset(
-                    iconAssetPath,
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.onSurface,
-                      BlendMode.srcIn,
-                    ),
+      ),
+    );
+  }
+
+  Widget _buildNewChatButton(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: onNewChat,
+          icon: Icon(Icons.add, color: theme.colorScheme.primary),
+          label: Text(
+            'New Chat',
+            style: TextStyle(color: theme.colorScheme.primary),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatsList() {
+    return Expanded(
+      child: BlocBuilder<ChatListBloc, ChatListState>(
+        builder: (context, state) {
+          if (state is ChatListLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is ChatListError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.error,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading chats',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<ChatListBloc>().add(LoadChatsEvent());
+                    },
+                    child: const Text('Retry'),
+                  ),
                 ],
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    softWrap: false,
-                    textAlign: TextAlign.start,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color:
-                          isUpdating
-                              ? Theme.of(context).colorScheme.onSurfaceVariant
-                              : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
+              ),
+            );
+          }
+
+          if (state is ChatListLoaded) {
+            final chats = state.displayChats;
+
+            if (chats.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.isSearching
+                          ? 'No chats found'
+                          : 'No conversations yet',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.isSearching
+                          ? 'Try searching with different keywords'
+                          : 'Start a new conversation to get started',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemCount: chats.length,
+              itemBuilder: (context, index) {
+                final chat = chats[index];
+                final originalIndex = state.chats.indexOf(chat);
+                final isSelected = selectedChatIndex == originalIndex;
+                final isUpdating =
+                    updatingChatIndex == originalIndex ||
+                    deletetingChatIndex == originalIndex;
+
+                return _ChatTile(
+                  title: chat.title,
+                  isSelected: isSelected,
+                  isUpdating: isUpdating,
+                  onTap: () => onChatTap(originalIndex, chat.id),
+                  onRename:
+                      () => onRenameChat(chat.id, originalIndex, chat.title),
+                  onDelete: () => onDeleteChat(chat.id, originalIndex),
+                );
+              },
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+}
+
+class _ChatTile extends StatelessWidget {
+  final String title;
+  final bool isSelected;
+  final bool isUpdating;
+  final VoidCallback onTap;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+
+  const _ChatTile({
+    required this.title,
+    required this.isSelected,
+    required this.isUpdating,
+    required this.onTap,
+    required this.onRename,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      elevation: isSelected ? 2 : 0,
+      color:
+          isSelected
+              ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+              : null,
+      child: ListTile(
+        title: Text(
+          title,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color:
+                isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: isUpdating ? null : onTap,
+        trailing:
+            isUpdating
+                ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      theme.colorScheme.primary,
                     ),
                   ),
+                )
+                : PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 16,
+                  ),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'rename':
+                        onRename();
+                        break;
+                      case 'delete':
+                        onDelete();
+                        break;
+                    }
+                  },
+                  itemBuilder:
+                      (context) => [
+                        PopupMenuItem(
+                          value: 'rename',
+                          child: Row(
+                            children: [
+                              SvgPicture.asset(
+                                'assets/icons/rename.svg',
+                                width: 16,
+                                height: 16,
+                                colorFilter: ColorFilter.mode(
+                                  theme.colorScheme.onSurface,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Rename'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              SvgPicture.asset(
+                                'assets/icons/delete.svg',
+                                width: 16,
+                                height: 16,
+                                colorFilter: ColorFilter.mode(
+                                  theme.colorScheme.error,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Delete',
+                                style: TextStyle(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                 ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

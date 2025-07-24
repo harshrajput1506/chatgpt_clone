@@ -556,23 +556,22 @@ class _AppBarWidget extends StatelessWidget {
             OptionsMenu(
               menuController: controller,
               menuItems: [
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 16,
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
+                  child: Text(
+                    chat?.title ?? '',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Expanded(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.6,
-                        child: Text(
-                          chat?.title ?? '',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
+                    textAlign: TextAlign.start,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Divider(color: theme.colorScheme.onSurfaceVariant),

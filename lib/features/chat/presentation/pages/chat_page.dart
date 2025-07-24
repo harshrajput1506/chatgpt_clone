@@ -549,11 +549,19 @@ class _AppBarWidget extends StatelessWidget {
               menuItems: [
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      chat?.title ?? '',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
+                    child: Expanded(
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: Text(
+                          chat?.title ?? '',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -593,6 +601,7 @@ class _AppBarWidget extends StatelessWidget {
                   child: Text(
                     'Delete',
                     style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                       color: theme.colorScheme.error,
                     ),
                   ),

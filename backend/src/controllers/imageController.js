@@ -4,7 +4,7 @@ import prisma from '../prisma.js';
 // Create single image record
 export const createImage = async (req, res) => {
     try {
-        const { publicId, url, originalName, size, format, width, height } = req.body;
+        const { publicId, url, originalName } = req.body;
 
         // Validate required fields
         if (!publicId || !url || !originalName) {
@@ -32,10 +32,6 @@ export const createImage = async (req, res) => {
             publicId,
             url,
             originalName,
-            size: size ? parseInt(size) : 0, // Default to 0 if not provided
-            format: format || 'unknown', // Default format if not provided
-            width: width ? parseInt(width) : 0, // Default to 0 if not provided
-            height: height ? parseInt(height) : 0, // Default to 0 if not provided
         };
 
         // Save image info to database

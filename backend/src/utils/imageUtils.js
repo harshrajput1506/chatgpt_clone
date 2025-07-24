@@ -47,12 +47,6 @@ export const formatImageResponse = (image) => {
         publicId: image.publicId,
         originalName: image.originalName,
         originalUrl: image.url,
-        size: image.size || 0,
-        format: image.format || 'unknown',
-        dimensions: {
-            width: image.width || 0,
-            height: image.height || 0
-        },
         urls: generateImageVariants(image.publicId),
         createdAt: image.createdAt
     };

@@ -27,6 +27,7 @@ class ChatLoaded extends ChatState {
   final bool isSearching;
   final bool hasUpdatedTitle;
   final bool hasDeletedChat;
+  final bool isRegenerating;
   final List<Chat> searchResults;
 
   ChatLoaded({
@@ -38,7 +39,8 @@ class ChatLoaded extends ChatState {
     this.isResponding = false,
     this.isSearching = false,
     this.hasUpdatedTitle = false,
-    this.hasDeletedChat = false,  
+    this.hasDeletedChat = false,
+    this.isRegenerating = false,
     this.searchResults = const [],
   });
 
@@ -56,6 +58,7 @@ class ChatLoaded extends ChatState {
     bool? isSearching,
     bool? hasUpdatedTitle,
     bool? hasDeletedChat,
+    bool? isRegenerating,
   }) {
     return ChatLoaded(
       currentChat: clearCurrentChat ? null : (currentChat ?? this.currentChat),
@@ -70,6 +73,7 @@ class ChatLoaded extends ChatState {
           clearSearchResults ? [] : (searchResults ?? this.searchResults),
       hasUpdatedTitle: hasUpdatedTitle ?? this.hasUpdatedTitle,
       hasDeletedChat: hasDeletedChat ?? this.hasDeletedChat,
+      isRegenerating: isRegenerating ?? this.isRegenerating,
     );
   }
 
@@ -85,5 +89,6 @@ class ChatLoaded extends ChatState {
     searchResults,
     hasUpdatedTitle,
     hasDeletedChat,
+    isRegenerating,
   ];
 }

@@ -3,7 +3,8 @@ import {
     generateAIResponse,
     streamAIResponse,
     getAvailableModels,
-    testOpenAIConnection
+    testOpenAIConnection,
+    regenerateResponse
 } from '../controllers/openaiController.js';
 import { validateObjectId } from '../middleware/validation.js';
 import { rateLimitOpenAI, validateAIRequest } from '../middleware/aiValidation.js';
@@ -23,6 +24,14 @@ router.post('/chats/:chatId/stream',
     rateLimitOpenAI,
     validateAIRequest,
     streamAIResponse
+);
+
+// Regenerate response for a specific message
+router.post('/chats/:chatId/messages/:messageId/regenerate',
+    validateObjectId,
+    rateLimitOpenAI,
+    validateAIRequest,
+    regenerateResponse
 );
 
 // OpenAI utility routes

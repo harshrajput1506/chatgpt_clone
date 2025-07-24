@@ -70,4 +70,65 @@ class OpenAIService {
       throw ServerFailure('Unexpected error');
     }
   }
+
+  Future<Map<String, dynamic>> regenerateResponse(
+    String chatId,
+    String messageId,
+    String model,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/ai/chats/$chatId/messages/$messageId/regenerate',
+        data: {'model': model},
+      );
+
+      _logger.i(
+        'Response regenerated successfully: ${response.data}, status: ${response.statusCode}',
+      );
+
+      if (response.statusCode != 200) {
+        _logger.e('Failed to regenerate response: ${response.data}');
+        throw ServerFailure('Failed to regenerate response');
+      }
+
+      final data = response.data as Map<String, dynamic>?;
+      if (data == null) {
+        _logger.e('No response data returned from server');
+        throw ServerFailure('No response data returned from server');
+      }
+
+      if (data['success'] != true) {
+        _logger.e('Failed to regenerate response: ${data['message']}');
+        throw ServerFailure(data['message'] ?? 'Failed to regenerate response');
+      }
+
+      if (data['regenerated'] != true) {
+        _logger.e('Response was not regenerated properly');
+        throw ServerFailure('Response was not regenerated properly');
+      }
+
+      return data;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        _logger.e('Connection timeout: ${e.message}');
+        throw NetworkFailure('Connection timeout');
+      } else if (e.response?.statusCode == 401) {
+        _logger.e('Invalid API key: ${e.message}');
+        throw ServerFailure('Invalid API key');
+      } else if (e.response?.statusCode == 429) {
+        _logger.e('Rate limit exceeded: ${e.message}');
+        throw ServerFailure('Rate limit exceeded');
+      } else {
+        _logger.e('Network error: ${e.message}');
+        throw ServerFailure('Network error');
+      }
+    } on ServerFailure catch (e) {
+      _logger.e('Server failure error: $e');
+      throw ServerFailure(e.message);
+    } catch (e) {
+      _logger.e('Unexpected error: $e');
+      throw ServerFailure('Unexpected error');
+    }
+  }
 }

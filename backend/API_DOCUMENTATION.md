@@ -275,6 +275,83 @@
   - Chunk events: `{"content": "text", "type": "chunk", "model": "string"}`
   - Complete event: `{"type": "complete", "messageId": "string", "fullContent": "string"}`
 
+### Regenerate AI Response
+- **POST** `/ai/chats/:chatId/messages/:messageId/regenerate`
+- **Description**: Regenerates an AI response for a specific assistant message. Deletes the target message and all subsequent messages, then generates a new response based on the conversation context up to the preceding user message.
+- **Parameters**:
+  - `chatId` (string): Chat ID (MongoDB ObjectId)
+  - `messageId` (string): ID of the assistant message to regenerate (MongoDB ObjectId)
+- **Body**:
+  ```json
+  {
+    "model": "gpt-4o-mini", // optional, default: gpt-4o-mini
+    "max_tokens": 1000, // optional, default: 1000
+    "temperature": 0.7, // optional, default: 0.7
+    "includeSystemMessage": true // optional, default: true
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "chat": {
+      "id": "string",
+      "uid": "string",
+      "title": "string",
+      "messages": [
+        {
+          "id": "string",
+          "content": "User message content",
+          "sender": "user",
+          "imageId": "string or null",
+          "image": {
+            "id": "string",
+            "publicId": "string",
+            "url": "string",
+            "originalName": "string",
+            "size": number,
+            "format": "string",
+            "width": number,
+            "height": number,
+            "createdAt": "datetime"
+          },
+          "createdAt": "datetime"
+        },
+        {
+          "id": "string",
+          "content": "Regenerated AI response text",
+          "sender": "assistant",
+          "imageId": null,
+          "image": null,
+          "createdAt": "datetime"
+        }
+      ],
+      "createdAt": "datetime"
+    },
+    "message": {
+      "id": "string",
+      "content": "Regenerated AI response text",
+      "sender": "assistant",
+      "imageId": null,
+      "image": null,
+      "createdAt": "datetime"
+    },
+    "usage": {
+      "prompt_tokens": number,
+      "completion_tokens": number,
+      "total_tokens": number
+    },
+    "model": "string",
+    "regenerated": true,
+    "context": {
+      "messagesUsed": number,
+      "truncated": boolean,
+      "hasContextSummary": boolean,
+      "estimatedTokens": number
+    }
+  }
+  ```
+
 ### Get Available Models
 - **GET** `/ai/models`
 - **Description**: Returns list of available OpenAI models
@@ -441,12 +518,36 @@ Future<void> sendMessageWithImage(String chatId, String content, String? imageId
 
 // Generate AI response
 Future<Map<String, dynamic>?> generateAIResponse(String chatId, {
-  String model = 'gpt-3.5-turbo',
+  String model = 'gpt-4o-mini',
   int maxTokens = 1000,
   double temperature = 0.7,
 }) async {
   final response = await http.post(
     Uri.parse('http://localhost:5000/api/ai/chats/$chatId/generate'),
+    headers: {'Content-Type': 'application/json'},
+    body: json.encode({
+      'model': model,
+      'max_tokens': maxTokens,
+      'temperature': temperature,
+    }),
+  );
+  
+  if (response.statusCode == 200) {
+    return json.decode(response.body);
+  }
+  return null;
+}
+
+// Regenerate AI response for a specific message
+Future<Map<String, dynamic>?> regenerateAIResponse(
+  String chatId, 
+  String messageId, {
+  String model = 'gpt-4o-mini',
+  int maxTokens = 1000,
+  double temperature = 0.7,
+}) async {
+  final response = await http.post(
+    Uri.parse('http://localhost:5000/api/ai/chats/$chatId/messages/$messageId/regenerate'),
     headers: {'Content-Type': 'application/json'},
     body: json.encode({
       'model': model,
@@ -528,6 +629,20 @@ class ChatService {
       print('AI Response: ${aiResponse['message']['content']}');
       print('Tokens used: ${aiResponse['usage']['total_tokens']}');
       print('Estimated cost: \$${aiResponse['costEstimate']['estimatedTotalCost']}');
+    }
+  }
+  
+  // Regenerate AI response for a specific message
+  Future<void> regenerateResponse(String chatId, String assistantMessageId) async {
+    final response = await regenerateAIResponse(chatId, assistantMessageId);
+    
+    if (response != null && response['success'] == true) {
+      print('Regenerated Response: ${response['message']['content']}');
+      print('Tokens used: ${response['usage']['total_tokens']}');
+      print('Message ID: ${response['message']['id']}');
+      print('Regenerated: ${response['regenerated']}');
+      print('Updated Chat: ${response['chat']['title']}');
+      print('Total Messages in Chat: ${response['chat']['messages'].length}');
     }
   }
   

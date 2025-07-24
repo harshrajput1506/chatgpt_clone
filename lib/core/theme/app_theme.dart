@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
 
 class AppTheme {
   static const Color primary = Color(0xFF10A37F);
+
+  // Get platform-specific font family
+  static String get fontFamily {
+    if (Platform.isIOS) {
+      return 'SF Pro Display'; // iOS native font
+    } else {
+      return 'Roboto'; // Android and other platforms
+    }
+  }
+
   static final ColorScheme lightColorScheme = ColorScheme(
     brightness: Brightness.light,
     primary: primary,
@@ -30,30 +41,30 @@ class AppTheme {
     surface: Colors.black,
     onSurface: Colors.white70,
     surfaceContainer: Color(0xFF232325),
-    onSurfaceVariant: Colors.white70,
+    onSurfaceVariant: Colors.white54,
     inverseSurface: Colors.white,
     onInverseSurface: Colors.black87,
     scrim: Colors.white24,
   );
 
-  static ThemeData lightTheme = ThemeData(
+  static ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
-    fontFamily: 'SF Pro Display',
+    fontFamily: fontFamily,
     brightness: Brightness.light,
     colorScheme: lightColorScheme,
-    textTheme: const TextTheme(
+    textTheme: TextTheme(
       headlineSmall: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w500,
-        fontFamily: 'SF Pro Display',
+        fontFamily: fontFamily,
       ),
-      bodyLarge: TextStyle(fontSize: 16, fontFamily: 'SF Pro Display'),
-      bodyMedium: TextStyle(fontSize: 14, fontFamily: 'SF Pro Display'),
-      bodySmall: TextStyle(fontSize: 12, fontFamily: 'SF Pro Display'),
+      bodyLarge: TextStyle(fontSize: 16, fontFamily: fontFamily),
+      bodyMedium: TextStyle(fontSize: 14, fontFamily: fontFamily),
+      bodySmall: TextStyle(fontSize: 12, fontFamily: fontFamily),
       labelSmall: TextStyle(
         fontSize: 10,
         fontWeight: FontWeight.w500,
-        fontFamily: 'SF Pro Display',
+        fontFamily: fontFamily,
       ),
     ),
     appBarTheme: const AppBarTheme(
@@ -83,24 +94,24 @@ class AppTheme {
     ),
   );
 
-  static ThemeData darkTheme = ThemeData(
+  static ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
-    fontFamily: 'SF Pro Display',
+    fontFamily: fontFamily,
     brightness: Brightness.dark,
     colorScheme: darkColorScheme,
-    textTheme: const TextTheme(
+    textTheme: TextTheme(
       headlineSmall: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w500,
-        fontFamily: 'SF Pro Display',
+        fontFamily: fontFamily,
       ),
-      bodyLarge: TextStyle(fontSize: 16, fontFamily: 'SF Pro Display'),
-      bodyMedium: TextStyle(fontSize: 14, fontFamily: 'SF Pro Display'),
-      bodySmall: TextStyle(fontSize: 12, fontFamily: 'SF Pro Display'),
+      bodyLarge: TextStyle(fontSize: 16, fontFamily: fontFamily),
+      bodyMedium: TextStyle(fontSize: 14, fontFamily: fontFamily),
+      bodySmall: TextStyle(fontSize: 12, fontFamily: fontFamily),
       labelSmall: TextStyle(
         fontSize: 10,
         fontWeight: FontWeight.w500,
-        fontFamily: 'SF Pro Display',
+        fontFamily: fontFamily,
       ),
     ),
     appBarTheme: const AppBarTheme(

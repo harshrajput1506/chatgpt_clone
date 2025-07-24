@@ -1,15 +1,17 @@
+import 'package:chatgpt_clone/config/routes.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
-  final VoidCallback? onRetry;
+  final VoidCallback? onRegenerate;
 
-  const MessageBubble({super.key, required this.message, this.onRetry});
+  const MessageBubble({super.key, required this.message, this.onRegenerate});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +60,13 @@ class MessageBubble extends StatelessWidget {
                 BlendMode.srcIn,
               ),
             ),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to selectable page with message content
+              context.push(
+                AppRoutes.selectablePage,
+                extra: {'content': message.content, 'role': message.role.name},
+              );
+            },
             child: Text(
               'Select Text',
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -68,6 +76,7 @@ class MessageBubble extends StatelessWidget {
           ),
         ],
         child: InkWell(
+          onTap: () => controller.close(),
           onLongPress: () {
             // Show options menu for user messages
             if (controller.isOpen) {
@@ -145,7 +154,17 @@ class MessageBubble extends StatelessWidget {
                   BlendMode.srcIn,
                 ),
               ),
-              onPressed: () {},
+              onPressed: () {
+                // Navigate to selectable page with message content
+
+                context.push(
+                  AppRoutes.selectablePage,
+                  extra: {
+                    'content': message.content,
+                    'role': message.role.name,
+                  },
+                );
+              },
               child: Text(
                 'Select Text',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -165,7 +184,7 @@ class MessageBubble extends StatelessWidget {
                   BlendMode.srcIn,
                 ),
               ),
-              onPressed: () {},
+              onPressed: onRegenerate,
               child: Text(
                 'Regenerate Response',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -182,6 +201,7 @@ class MessageBubble extends StatelessWidget {
                 //  MarkdownBody here
                 Material(
                   child: InkWell(
+                    onTap: () => controller.close(),
                     onLongPress: () {
                       // Show options menu for assistant messages
                       if (controller.isOpen) {
@@ -271,7 +291,7 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (message.hasError && onRetry != null) ...[
+              if (message.hasError) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -287,8 +307,6 @@ class MessageBubble extends StatelessWidget {
                         color: theme.colorScheme.error,
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(onPressed: onRetry, child: const Text('Retry')),
                   ],
                 ),
               ],
@@ -323,7 +341,7 @@ class MessageBubble extends StatelessWidget {
                         ),
                       ),
                     InkWell(
-                      onTap: onRetry,
+                      onTap: onRegenerate,
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: SvgPicture.asset(

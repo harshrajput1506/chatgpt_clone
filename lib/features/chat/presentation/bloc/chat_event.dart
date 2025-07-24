@@ -72,3 +72,13 @@ class UpdateCurrentChatTitleEvent extends ChatEvent {
   @override
   List<Object> get props => [title];
 }
+
+class RegenerateResponseEvent extends ChatEvent {
+  final String messageId;
+  final String model;
+
+  RegenerateResponseEvent({required this.messageId, required this.model});
+
+  @override
+  List<Object> get props => [messageId, model];
+}

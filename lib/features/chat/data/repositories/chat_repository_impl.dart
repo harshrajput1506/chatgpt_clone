@@ -130,4 +130,30 @@ class ChatRepositoryImpl implements ChatRepository {
       return Left(ServerFailure('Failed to update chat title'));
     }
   }
+
+  @override
+  Future<Either<Failure, Chat>> regenerateResponse({
+    required String chatId,
+    required String messageId,
+    required String model,
+  }) async {
+    try {
+      // Call the OpenAI service to regenerate the response
+      final response = await openAIService.regenerateResponse(
+        chatId,
+        messageId,
+        model,
+      );
+
+      // Extract the chat data from the response
+      final chatData = response['chat'] as Map<String, dynamic>;
+      final chat = ChatModel.fromJson(chatData);
+
+      return Right(chat);
+    } on Failure catch (e) {
+      return Left(e);
+    } catch (e) {
+      return Left(ServerFailure('Failed to regenerate response'));
+    }
+  }
 }

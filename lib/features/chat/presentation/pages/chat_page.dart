@@ -124,6 +124,8 @@ class _ChatPageState extends State<ChatPage> {
             print('NewChatState: ${messages.isEmpty}');
             final isResponding =
                 state is ChatLoaded && state.isResponding == true;
+            final isRegenerating =
+                state is ChatLoaded && state.isRegenerating == true;
             final isChatLoading =
                 state is ChatLoaded && state.isChatLoading == true;
             if (messages.isNotEmpty) {
@@ -145,13 +147,14 @@ class _ChatPageState extends State<ChatPage> {
                           : _buildMessageList(messages, isChatLoading),
                 ),
                 if (isResponding) _buildTypingIndicator(),
+                if (isRegenerating) _buildRegeneratingIndicator(),
                 MessageInput(
                   onSendMessage:
                       (content, model) => _sendMessage(context, content, model),
                   onSendImage:
                       (imagePath, caption, model) =>
                           _sendImageMessage(context, imagePath, caption),
-                  enabled: !isResponding,
+                  enabled: !isResponding && !isRegenerating,
                 ),
               ],
             );
@@ -352,9 +355,9 @@ class _ChatPageState extends State<ChatPage> {
         final message = messages[index];
         return MessageBubble(
           message: message,
-          onRetry:
-              message.hasError
-                  ? () => _retryMessage(context, message.id)
+          onRegenerate:
+              message.role == MessageRole.assistant && !message.hasError
+                  ? () => _regenerateResponse(context, message.id)
                   : null,
         );
       },
@@ -367,6 +370,23 @@ class _ChatPageState extends State<ChatPage> {
       child: const Row(
         children: [
           Text('Responding...'),
+          SizedBox(width: 8),
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegeneratingIndicator() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: const Row(
+        children: [
+          Text('Regenerating response...'),
           SizedBox(width: 8),
           SizedBox(
             width: 20,
@@ -400,21 +420,16 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  // _generateResponse removed: now handled by Bloc
 
-  void _retryMessage(BuildContext context, String messageId) {
-    // Implement retry event if needed in ChatBloc
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Retry not implemented in Bloc.')),
+  void _regenerateResponse(BuildContext context, String messageId) {
+    // Use the first model as default (same as the input widget default)
+    const String selectedModel =
+        'gpt-4o-mini'; // Default model from AppConstants.availableModels[0]
+
+    context.read<ChatBloc>().add(
+      RegenerateResponseEvent(messageId: messageId, model: selectedModel),
     );
   }
-
-  // void _regenerateLastResponse(BuildContext context) {
-  //   // Implement regenerate event if needed in ChatBloc
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(content: Text('Regenerate not implemented in Bloc.')),
-  //   );
-  // }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -485,16 +500,13 @@ class _ChatPageState extends State<ChatPage> {
                           : null,
                   child: Text(
                     'Rename',
-                    style:
-                        enabled
-                            ? Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            )
-                            : Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant.withAlpha(150),
-                            ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color:
+                          enabled
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -538,6 +550,7 @@ class _ChatPageState extends State<ChatPage> {
                 'Delete',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

@@ -316,7 +316,7 @@ class ChatDrawer extends StatelessWidget {
                           isUpdating
                               ? Theme.of(
                                 context,
-                              ).colorScheme.onSurfaceVariant.withAlpha(150)
+                              ).colorScheme.onSurfaceVariant
                               : Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),

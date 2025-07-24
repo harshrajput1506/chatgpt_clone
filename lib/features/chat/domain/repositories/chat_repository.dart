@@ -18,4 +18,9 @@ abstract class ChatRepository {
     required String chatId,
     required String title,
   });
+  Future<Either<Failure, Chat>> regenerateResponse({
+    required String chatId,
+    required String messageId,
+    required String model,
+  });
 }

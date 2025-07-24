@@ -60,13 +60,13 @@ export const generateAIResponse = async (req, res) => {
         // Format messages for the specified model
         const formattedMessages = formatMessageForOpenAI(context);
 
-        
+
 
         const completion = await generateChatResponse(formattedMessages, {
-                model,
-                max_tokens,
-                temperature
-            });;
+            model,
+            max_tokens,
+            temperature
+        });;
 
         const aiResponse = completion.choices[0]?.message?.content;
 
@@ -257,6 +257,158 @@ export const getAvailableModels = async (req, res) => {
         console.error('Get Models Error:', error);
         res.status(500).json({
             error: 'Failed to get available models',
+            details: error.message
+        });
+    }
+};
+
+// Regenerate response for a specific message
+export const regenerateResponse = async (req, res) => {
+    try {
+        if (!isOpenAIConfigured()) {
+            return res.status(503).json({
+                error: 'OpenAI API is not configured',
+                details: 'Please set OPENAI_API_KEY in environment variables'
+            });
+        }
+
+        const { chatId, messageId } = req.params;
+        const {
+            model = 'gpt-4o-mini',
+            max_tokens = 1000,
+            temperature = 0.7,
+            includeSystemMessage = true
+        } = req.body;
+
+        // Check if chat exists
+        const chat = await prisma.chat.findUnique({
+            where: { id: chatId }
+        });
+
+        if (!chat) {
+            return res.status(404).json({ error: 'Chat not found' });
+        }
+
+        // Find the message to regenerate from
+        const targetMessage = await prisma.message.findUnique({
+            where: { id: messageId }
+        });
+
+        if (!targetMessage) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        if (targetMessage.chatId !== chatId) {
+            return res.status(400).json({ error: 'Message does not belong to this chat' });
+        }
+
+        if (targetMessage.sender !== 'assistant') {
+            return res.status(400).json({ error: 'Can only regenerate response for assistant messages' });
+        }
+
+        // Delete the target message and all messages after it
+        await prisma.message.deleteMany({
+            where: {
+                chatId: chatId,
+                createdAt: {
+                    gte: targetMessage.createdAt
+                }
+            }
+        });
+
+        // Get conversation context up to (but not including) the target message
+        const messages = await prisma.message.findMany({
+            where: {
+                chatId,
+                createdAt: {
+                    lt: targetMessage.createdAt
+                }
+            },
+            orderBy: { createdAt: 'asc' },
+            include: { image: true }
+        });
+
+        if (messages.length === 0) {
+            return res.status(400).json({
+                error: 'No messages found in chat',
+                details: 'Add messages to the chat before regenerating response'
+            });
+        }
+
+        // Ensure the last message is from user (so we can regenerate assistant response)
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.sender !== 'user') {
+            return res.status(400).json({
+                error: 'Cannot regenerate response',
+                details: 'The conversation must end with a user message to regenerate assistant response'
+            });
+        }
+
+        // Build context for OpenAI
+        const context = {
+            messages: messages,
+            truncated: false,
+            hasContextSummary: false,
+            estimatedTokens: messages.length * 50 // Rough estimate
+        };
+
+        // Format messages for the specified model
+        const formattedMessages = formatMessageForOpenAI(context);
+
+        const completion = await generateChatResponse(formattedMessages, {
+            model,
+            max_tokens,
+            temperature
+        });
+
+        const aiResponse = completion.choices[0]?.message?.content;
+
+        if (!aiResponse) {
+            return res.status(500).json({ error: 'No response generated from OpenAI' });
+        }
+
+        // Save new AI response to database
+        const aiMessage = await prisma.message.create({
+            data: {
+                chatId,
+                content: aiResponse,
+                sender: 'assistant'
+            },
+            include: {
+                image: true
+            }
+        });
+
+        // Get updated chat with all messages
+        const updatedChat = await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: {
+                messages: {
+                    orderBy: { createdAt: 'asc' },
+                    include: { image: true }
+                }
+            }
+        });
+
+        res.json({
+            success: true,
+            chat: updatedChat,
+            message: aiMessage,
+            usage: completion.usage,
+            model: completion.model,
+            regenerated: true,
+            context: {
+                messagesUsed: context.messages.length,
+                truncated: context.truncated,
+                hasContextSummary: context.hasContextSummary,
+                estimatedTokens: context.estimatedTokens
+            }
+        });
+
+    } catch (error) {
+        console.error('Regenerate Response Error:', error);
+        res.status(500).json({
+            error: 'Failed to regenerate AI response',
             details: error.message
         });
     }

@@ -18,6 +18,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<DeleteChatEvent>(_onDeleteChat);
     on<UpdateChatTitleEvent>(_onUpdateChatTitle);
     on<UpdateCurrentChatTitleEvent>(_onUpdateCurrentChatTitle);
+    on<RegenerateResponseEvent>(_onRegenerateResponse);
   }
 
   Future<void> _onSendMessage(
@@ -252,6 +253,43 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     final updatedChat = currentState.currentChat!.copyWith(title: event.title);
     emit(
       currentState.copyWith(currentChat: updatedChat, hasUpdatedTitle: true),
+    );
+  }
+
+  Future<void> _onRegenerateResponse(
+    RegenerateResponseEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatLoaded) return;
+    final currentState = state as ChatLoaded;
+    if (currentState.currentChat == null) return;
+
+    // Start regenerating
+    emit(currentState.copyWith(isRegenerating: true, clearErrorMessage: true));
+
+    final result = await chatRepository.regenerateResponse(
+      chatId: currentState.currentChat!.id,
+      messageId: event.messageId,
+      model: event.model,
+    );
+
+    result.fold(
+      (failure) {
+        emit(
+          currentState.copyWith(
+            isRegenerating: false,
+            errorMessage: failure.message,
+          ),
+        );
+      },
+      (regeneratedChat) {
+        emit(
+          currentState.copyWith(
+            isRegenerating: false,
+            currentChat: regeneratedChat,
+          ),
+        );
+      },
     );
   }
 }

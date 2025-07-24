@@ -38,7 +38,9 @@ class ChatDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Drawer(
+    return Container(
+      width: MediaQuery.of(context).size.width * 0.8,
+      decoration: BoxDecoration(color: theme.colorScheme.surface),
       child: SafeArea(
         child: Column(
           children: [
@@ -54,7 +56,7 @@ class ChatDrawer extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
       child: Row(
         children: [
           Text(
@@ -76,16 +78,24 @@ class ChatDrawer extends StatelessWidget {
 
   Widget _buildSearchField(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
       child: TextField(
         controller: controller,
         focusNode: focusNode,
         onChanged: onValueChange,
         decoration: InputDecoration(
           hintText: 'Search conversations',
-          prefixIcon: Icon(
-            Icons.search,
-            color: theme.colorScheme.onSurfaceVariant,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: SvgPicture.asset(
+              'assets/icons/search.svg',
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(
+                theme.colorScheme.onSurfaceVariant,
+                BlendMode.srcIn,
+              ),
+            ),
           ),
           suffixIcon:
               hasText
@@ -97,13 +107,9 @@ class ChatDrawer extends StatelessWidget {
                     ),
                   )
                   : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.colorScheme.outline),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.colorScheme.outline),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -112,7 +118,7 @@ class ChatDrawer extends StatelessWidget {
 
   Widget _buildNewChatButton(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
@@ -261,11 +267,7 @@ class _ChatTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 2),
-      elevation: isSelected ? 2 : 0,
-      color:
-          isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.3)
-              : null,
+      color: isSelected ? theme.colorScheme.primary.withOpacity(0.3) : null,
       child: ListTile(
         title: Text(
           title,

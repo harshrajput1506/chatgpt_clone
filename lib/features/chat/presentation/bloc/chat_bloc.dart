@@ -23,6 +23,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<UpdateChatTitleEvent>(_onUpdateChatTitle);
     on<UpdateCurrentChatTitleEvent>(_onUpdateCurrentChatTitle);
     on<RegenerateResponseEvent>(_onRegenerateResponse);
+    on<PickImageEvent>(_onPickImage);
   }
 
   Future<void> _onSendMessage(
@@ -38,6 +39,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       content: event.message,
       type: MessageType.text,
       role: MessageRole.user,
+      imageUrl: event.imageUrl,
       timestamp: DateTime.now(),
     );
 
@@ -106,6 +108,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               ],
             ),
             isResponding: false,
+            clearpickedImage: true, // Clear picked image after sending
           ),
         );
         if (isNewChat) {
@@ -177,6 +180,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           clearCurrentChat: true,
           isChatLoading: false,
           clearErrorMessage: true,
+          clearpickedImage: true, // Clear picked image when starting new chat
         ),
       );
     } else {
@@ -313,7 +317,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
       return;
     }
-
     // Pick image
     final pickedFile = await imagePicker.pickImage(source: event.source);
     if (pickedFile == null) {
@@ -321,7 +324,32 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       return;
     }
 
-    
-
+    emit(
+      currentState.copyWith(
+        isImageUploading: true,
+        pickedImagePath: pickedFile.path,
+        clearError: true, // Clear any previous error
+      ),
+    );
+    // Upload image
+    final result = await chatRepository.uploadImage(imagePath: pickedFile.path);
+    result.fold(
+      (failure) {
+        emit(
+          currentState.copyWith(
+            error: failure.message,
+            isImageUploading: false,
+          ),
+        );
+      },
+      (chatImage) {
+        emit(
+          currentState.copyWith(
+            isImageUploading: false,
+            pickedImage: chatImage,
+          ),
+        );
+      },
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
+import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class ChatState extends Equatable {}
@@ -28,9 +29,9 @@ class ChatLoaded extends ChatState {
   final bool hasUpdatedTitle;
   final bool hasDeletedChat;
   final bool isRegenerating;
-  final bool isImageLoading;
-  final String? selectedImagePath;
-  final String? selectedImageId;
+  final bool isImageUploading;
+  final String? pickedImagePath;
+  final ChatImage? pickedImage;
   final List<Chat> searchResults;
   final String? error;
   ChatLoaded({
@@ -44,9 +45,9 @@ class ChatLoaded extends ChatState {
     this.hasUpdatedTitle = false,
     this.hasDeletedChat = false,
     this.isRegenerating = false,
-    this.isImageLoading = false,
-    this.selectedImagePath,
-    this.selectedImageId,
+    this.isImageUploading = false,
+    this.pickedImagePath,
+    this.pickedImage,
     this.searchResults = const [],
     this.error,
   });
@@ -66,11 +67,12 @@ class ChatLoaded extends ChatState {
     bool? hasUpdatedTitle,
     bool? hasDeletedChat,
     bool? isRegenerating,
-    bool? isImageLoading,
-    String? selectedImagePath,
-    String? selectedImageId,
-    bool clearSelectedImage = false,
+    bool? isImageUploading,
+    String? pickedImagePath,
+    ChatImage? pickedImage,
+    bool clearpickedImage = false,
     String? error,
+    bool clearError = false,
   }) {
     return ChatLoaded(
       currentChat: clearCurrentChat ? null : (currentChat ?? this.currentChat),
@@ -86,14 +88,11 @@ class ChatLoaded extends ChatState {
       hasUpdatedTitle: hasUpdatedTitle ?? this.hasUpdatedTitle,
       hasDeletedChat: hasDeletedChat ?? this.hasDeletedChat,
       isRegenerating: isRegenerating ?? this.isRegenerating,
-      isImageLoading: isImageLoading ?? this.isImageLoading,
-      error: error ?? this.error,
-      selectedImagePath:
-          clearSelectedImage
-              ? null
-              : (selectedImagePath ?? this.selectedImagePath),
-      selectedImageId:
-          clearSelectedImage ? null : (selectedImageId ?? this.selectedImageId),
+      isImageUploading: isImageUploading ?? this.isImageUploading,
+      error: clearError ? null : (error ?? this.error),
+      pickedImagePath:
+          clearpickedImage ? null : (pickedImagePath ?? this.pickedImagePath),
+      pickedImage: clearpickedImage ? null : (pickedImage ?? this.pickedImage),
     );
   }
 
@@ -111,6 +110,8 @@ class ChatLoaded extends ChatState {
     hasDeletedChat,
     isRegenerating,
     error,
-    isImageLoading,
+    isImageUploading,
+    pickedImagePath,
+    pickedImage,
   ];
 }

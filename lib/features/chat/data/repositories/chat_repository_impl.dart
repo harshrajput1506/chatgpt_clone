@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:chatgpt_clone/core/services/cloudinary_service.dart';
 import 'package:chatgpt_clone/core/services/mongo_service.dart';
 import 'package:chatgpt_clone/core/services/openai_service.dart';
 import 'package:chatgpt_clone/core/utils/failures.dart';
 import 'package:chatgpt_clone/core/utils/uid_helper.dart';
+import 'package:chatgpt_clone/features/chat/data/models/chat_image_model.dart';
 import 'package:chatgpt_clone/features/chat/data/models/chat_model.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
@@ -26,7 +29,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<Either<Failure, Chat>> sendMessage({
     required String model,
     required String content,
-    String? imageUrl,
+    String? imageId,
     String chatId = '',
     bool isNewChat = false,
   }) async {
@@ -47,7 +50,12 @@ class ChatRepositoryImpl implements ChatRepository {
       }
 
       // Save the user message
-      await mongoService.saveMessage(chatId, content, sender: 'user');
+      await mongoService.saveMessage(
+        chatId,
+        content,
+        sender: 'user',
+        imageId: imageId,
+      );
 
       // generate response from OpenAI
       final response = await openAIService.generateResponse(chatId, model);
@@ -169,16 +177,51 @@ class ChatRepositoryImpl implements ChatRepository {
     required String imagePath,
   }) async {
     try {
+      // validate the file size and type if needed
+      if (imagePath.isEmpty) {
+        return Left(ServerFailure('Image path cannot be empty'));
+      }
+
+      final file = File(imagePath);
+
+      _logger.i('Uploading image from path: $imagePath');
+
+      _logger.i(
+        'Image file size: ${file.lengthSync() / 1024 / 1024} MB - extension - ${file.path.split('.').last}',
+      );
+
+      // check file type is image
+      if (![
+        'jpg',
+        'jpeg',
+        'png',
+        'gif',
+        'webp',
+        'bmp',
+      ].contains(imagePath.split('.').last.toLowerCase())) {
+        return Left(ServerFailure('Invalid image type'));
+      }
+
+      // check file size not more than 5MB
+      if (file.lengthSync() > 5 * 1024 * 1024) {
+        return Left(ServerFailure('Image size should not exceed 5MB'));
+      }
+
       // Upload the image on the cloudinary
       final response = await cloudinaryService.uploadImage(imagePath);
 
       // save the image in mongoDB
-      
+      final imageData = await mongoService.saveImage(
+        response['publicId'],
+        response['originalName'],
+        response['originalUrl'],
+      );
+      final image = ChatImageModel.fromJson(imageData);
 
-      return Right(ChatImage(url: imageUrl));
+      return Right(image);
     } catch (e) {
       _logger.e('Failed to upload image: $e');
-      return Left(ServerFailure('Failed to upload image: $e'));
+      return Left(ServerFailure('Failed to upload image'));
     }
   }
 }

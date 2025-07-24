@@ -8,7 +8,7 @@ abstract class ChatRepository {
     required String model,
     required String content,
     String chatId,
-    String? imageUrl,
+    String? imageId,
     bool isNewChat,
   });
   Future<Either<Failure, Chat>> getChatHistory({required String chatId});

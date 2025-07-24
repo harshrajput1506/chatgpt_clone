@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:chatgpt_clone/core/constants/app_constants.dart';
+import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,10 +10,13 @@ import 'package:image_picker/image_picker.dart';
 
 class MessageInput extends StatelessWidget {
   final Function(String, String) onSendMessage;
-  final Function(String, String, String) onSendImage;
+  final Function(String, String, ChatImage) onSendImage;
   final bool enabled;
   final TextEditingController controller;
   final FocusNode focusNode;
+  final ChatImage? pickedImage;
+  final String? pickedImagePath;
+  final bool isImageUploading;
   final bool showModelChange;
   final int selectedModelIndex;
   final bool showImagePickerOptions;
@@ -34,6 +40,9 @@ class MessageInput extends StatelessWidget {
     required this.onToggleImagePickerOptions,
     required this.showImagePickerOptions,
     required this.onPickImage,
+    this.pickedImage,
+    this.pickedImagePath,
+    this.isImageUploading = false,
     this.enabled = true,
   });
 
@@ -77,100 +86,140 @@ class MessageInput extends StatelessWidget {
                     color: colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.circular(32),
                   ),
-                  child: Row(
-                    crossAxisAlignment:
-                        canSend
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.center,
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 4.0,
-                            horizontal: 8.0,
-                          ),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxHeight: 150,
-                            ), // add expand button later
-                            child: TextField(
-                              controller: controller,
-                              focusNode: focusNode,
-                              enabled: enabled,
-                              maxLines: null,
-                              textCapitalization: TextCapitalization.sentences,
-                              decoration: InputDecoration(
-                                hintText: 'Ask anything',
-                                filled: false,
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              cursorColor: colorScheme.onSurface,
-                              onSubmitted: _sendMessage,
-                              onChanged: onTextChanged,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      if (!canSend) ...[
-                        InkWell(
-                          onTap: onToggleModelChange,
-                          borderRadius: BorderRadius.circular(4),
-                          child: Text(
-                            AppConstants.availableModels[selectedModelIndex],
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: colorScheme.secondary),
-                          ),
-                        ),
-                        InkWell(
-                          onTap: onToggleModelChange,
-                          borderRadius: BorderRadius.circular(24),
+                      if (pickedImagePath != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
                           child: Container(
-                            margin: const EdgeInsets.all(8.0),
-                            padding: EdgeInsets.all(8),
+                            height: 100,
+                            width: 100,
                             decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainer,
-                              shape: BoxShape.circle,
+                              color: Colors.grey,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            child: SvgPicture.asset(
-                              'assets/icons/model-control.svg',
-                              width: 20,
-                              height: 20,
-                              colorFilter: ColorFilter.mode(
-                                colorScheme.onSurface,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        InkWell(
-                          onTap: () => _sendMessage(controller.text),
-                          borderRadius: BorderRadius.circular(24),
-                          child: Container(
-                            margin: const EdgeInsets.all(8.0),
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: colorScheme.inverseSurface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: SvgPicture.asset(
-                              'assets/icons/up-arrow.svg',
-                              width: 20,
-                              height: 20,
-                              colorFilter: ColorFilter.mode(
-                                colorScheme.onInverseSurface,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                            child:
+                                isImageUploading
+                                    ? Center(
+                                      child: CircularProgressIndicator(
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    )
+                                    : Image.file(
+                                      File(pickedImagePath!),
+                                      fit: BoxFit.cover,
+                                    ),
                           ),
                         ),
                       ],
+                      Row(
+                        crossAxisAlignment:
+                            canSend
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4.0,
+                                horizontal: 8.0,
+                              ),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxHeight: 150,
+                                ), // add expand button later
+                                child: TextField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  enabled: enabled,
+                                  maxLines: null,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  decoration: InputDecoration(
+                                    hintText: 'Ask anything',
+                                    filled: false,
+                                    fillColor: colorScheme.surfaceContainer,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                  cursorColor: colorScheme.onSurface,
+                                  onSubmitted: _sendMessage,
+                                  onChanged: onTextChanged,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          if (!canSend) ...[
+                            InkWell(
+                              onTap: onToggleModelChange,
+                              borderRadius: BorderRadius.circular(4),
+                              child: Text(
+                                AppConstants
+                                    .availableModels[selectedModelIndex],
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: colorScheme.secondary),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: onToggleModelChange,
+                              borderRadius: BorderRadius.circular(24),
+                              child: Container(
+                                margin: const EdgeInsets.all(8.0),
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainer,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: SvgPicture.asset(
+                                  'assets/icons/model-control.svg',
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: ColorFilter.mode(
+                                    colorScheme.onSurface,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            InkWell(
+                              onTap: () {
+                                if (isImageUploading) return;
+                                if (pickedImagePath != null) {
+                                  _onSendImageMessage(
+                                    pickedImage!,
+                                    controller.text,
+                                  );
+                                } else {
+                                  _sendMessage(controller.text);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(24),
+                              child: Container(
+                                margin: const EdgeInsets.all(8.0),
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.inverseSurface,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: SvgPicture.asset(
+                                  'assets/icons/up-arrow.svg',
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: ColorFilter.mode(
+                                    colorScheme.onInverseSurface,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -246,6 +295,18 @@ class MessageInput extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _onSendImageMessage(ChatImage image, String content) {
+    if (content.trim().isEmpty || !enabled) return;
+
+    onSendImage(
+      content.trim(),
+      AppConstants.availableModels[selectedModelIndex], // Use selected model
+      image,
+    );
+    controller.clear();
+    focusNode.requestFocus();
   }
 
   void _sendMessage(String content) {

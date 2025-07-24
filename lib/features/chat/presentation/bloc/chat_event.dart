@@ -6,8 +6,15 @@ abstract class ChatEvent extends Equatable {}
 class SendMessageEvent extends ChatEvent {
   final String message;
   final String model;
+  final bool hasImage;
+  final String? imageId;
+  final String? imageUrl;
 
-  SendMessageEvent(this.message, this.model);
+  SendMessageEvent(this.message, this.model, {
+    this.hasImage = false,
+    this.imageId,
+    this.imageUrl,
+  } );
 
   @override
   List<Object> get props => [message];

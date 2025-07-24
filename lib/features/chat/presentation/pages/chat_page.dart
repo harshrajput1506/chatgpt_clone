@@ -1,6 +1,6 @@
 import 'package:chatgpt_clone/core/constants/app_constants.dart';
-import 'package:chatgpt_clone/core/utils/permission_helper.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
+import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
@@ -117,6 +117,11 @@ class _ChatPageState extends State<ChatPage> {
                 context,
               ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
             }
+            if (state is ChatLoaded && state.error != null) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.error!)));
+            }
             if (state is ChatLoaded && state.hasDeletedChat) {
               setState(() {
                 deltetingChatIndex = -1; // Reset deleting chat index
@@ -141,6 +146,11 @@ class _ChatPageState extends State<ChatPage> {
                 state is ChatLoaded && state.isRegenerating == true;
             final isChatLoading =
                 state is ChatLoaded && state.isChatLoading == true;
+            final isImageUploading =
+                state is ChatLoaded && state.isImageUploading == true;
+            final pickedImagePath =
+                state is ChatLoaded ? state.pickedImagePath : null;
+            final pickedImage = state is ChatLoaded ? state.pickedImage : null;
             if (messages.isNotEmpty) {
               // Ensure the scroll position is at the bottom when loading
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -167,6 +177,9 @@ class _ChatPageState extends State<ChatPage> {
                   showModelChange: _showModelChange,
                   selectedModelIndex: _selectedModelIndex,
                   showImagePickerOptions: _showImagePickerOptions,
+                  isImageUploading: isImageUploading,
+                  pickedImagePath: pickedImagePath,
+                  pickedImage: pickedImage,
                   onToggleModelChange: () {
                     setState(() {
                       _showImagePickerOptions =
@@ -194,8 +207,8 @@ class _ChatPageState extends State<ChatPage> {
                   onSendMessage:
                       (content, model) => _sendMessage(context, content, model),
                   onSendImage:
-                      (imagePath, caption, model) =>
-                          _sendImageMessage(context, imagePath, caption),
+                      (content, model, image) =>
+                          _sendImageMessage(context, content, model, image),
                   enabled: !isResponding && !isRegenerating,
                   onPickImage: (source) {
                     if (!isResponding &&
@@ -462,15 +475,17 @@ class _ChatPageState extends State<ChatPage> {
 
   void _sendImageMessage(
     BuildContext context,
-    String imagePath,
-    String caption,
+    String content,
+    String model,
+    ChatImage image,
   ) {
     // Implement image message event if needed in ChatBloc
-    // BlocProvider.of<ChatBloc>(context).add(SendImageMessageEvent(...));
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image message sending not implemented in Bloc.'),
+    BlocProvider.of<ChatBloc>(context).add(
+      SendMessageEvent(
+        content,
+        model,
+        imageId: image.id,
+        imageUrl: image.originalUrl,
       ),
     );
   }

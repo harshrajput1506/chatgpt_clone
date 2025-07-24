@@ -14,11 +14,18 @@ class MongoService {
     String chatId,
     String content, {
     String sender = 'user',
+    String? imageId,
   }) async {
     try {
+      
+      var body = {'content': content, 'sender': sender};
+      if (imageId != null) {
+        body['imageId'] = imageId;
+      }
+
       final response = await _dio.post(
         '$baseUrl/chats/$chatId/messages',
-        data: {'content': content, 'sender': sender},
+        data: body,
       );
       _logger.i(
         'Message saved successfully: ${response.data}, status: ${response.statusCode}',
@@ -183,6 +190,37 @@ class MongoService {
     } catch (e) {
       _logger.e('Failed to update chat title: $e');
       throw ServerFailure('Failed to update chat title: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> saveImage(
+    String publicId,
+    String originalName,
+    String url,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/images',
+        data: {'publicId': publicId, 'originalName': originalName, 'url': url},
+      );
+      _logger.i(
+        'Image saved successfully: ${response.data}, status: ${response.statusCode}',
+      );
+      if (response.statusCode != 201) {
+        throw ServerFailure('Failed to save image');
+      }
+      if (response.data == null || response.data is! Map<String, dynamic>) {
+        throw ServerFailure('Invalid image data');
+      }
+      if (response.data['success'] != true) {
+        throw ServerFailure('Failed to save image');
+      }
+      return Map<String, dynamic>.from(
+        response.data['image'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      _logger.e('Failed to save image: $e');
+      throw ServerFailure('Failed to save image: $e');
     }
   }
 }

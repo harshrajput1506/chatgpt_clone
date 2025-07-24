@@ -7,6 +7,7 @@ import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 
 final GetIt di = GetIt.instance;
 Future<void> init() async {
@@ -14,18 +15,29 @@ Future<void> init() async {
   di.registerLazySingleton<Dio>(() => Dio());
   // Register services
   di.registerLazySingleton<CloudinaryService>(() => CloudinaryService());
-  di.registerLazySingleton<MongoService>(
-    () => MongoService(di.get<Dio>()),
-  );
+  di.registerLazySingleton<MongoService>(() => MongoService(di.get<Dio>()));
+
   di.registerLazySingleton<OpenAIService>(() => OpenAIService(di.get<Dio>()));
 
   // Register repositories
   di.registerLazySingleton<ChatRepository>(
-    () => ChatRepositoryImpl(openAIService: di<OpenAIService>(), mongoService: di<MongoService>()),
+    () => ChatRepositoryImpl(
+      openAIService: di<OpenAIService>(),
+      mongoService: di<MongoService>(),
+      cloudinaryService: di<CloudinaryService>(),
+    ),
   );
 
   // Register blocs
   di.registerFactory<ChatBloc>(
-    () => ChatBloc(chatRepository: di<ChatRepository>()),
+    () => ChatBloc(
+      chatRepository: di<ChatRepository>(),
+      imagePicker: di<ImagePicker>(),
+    ),
   );
+
+  // Register ImagePicker
+  di.registerLazySingleton<ImagePicker>(
+    () => ImagePicker(),
+  ); // Uncomment if using ImagePicker
 }

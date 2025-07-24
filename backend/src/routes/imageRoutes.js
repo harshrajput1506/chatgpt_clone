@@ -2,7 +2,6 @@ import express from 'express';
 import {
     createImage,
     deleteImage,
-    getImages,
     getImageById
 } from '../controllers/imageController.js';
 import { validateObjectId, validateImageCreation } from '../middleware/validation.js';

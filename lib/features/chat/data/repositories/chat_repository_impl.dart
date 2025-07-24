@@ -18,7 +18,7 @@ class ChatRepositoryImpl implements ChatRepository {
   final OpenAIService openAIService;
   final MongoService mongoService;
   final CloudinaryService cloudinaryService;
-  final Logger _logger = Logger();
+  final Logger _logger = Logger(printer: PrettyPrinter());
   ChatRepositoryImpl({
     required this.openAIService,
     required this.mongoService,
@@ -98,6 +98,7 @@ class ChatRepositoryImpl implements ChatRepository {
       // Fetch chat history from MongoDB service
       final chatData = await mongoService.getChatHistory(chatId, uid);
       final chat = ChatModel.fromJson(chatData);
+      _logger.i('Fetched chat history: $chat');
       return Right(chat);
     } catch (e) {
       return Left(ServerFailure('Failed to fetch chat history'));

@@ -48,13 +48,15 @@ class MessageModel extends Message {
   }
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
+    final image = json['image'] as Map<String, dynamic>?;
+    final imageUrl = image != null ? image['url'] as String : null;
     return MessageModel(
       id: json['id'],
       content: json['content'],
       type: json['imageId'] != null ? MessageType.image : MessageType.text,
       role: MessageRole.values.firstWhere((e) => e.name == json['sender']),
       timestamp: DateTime.parse(json['createdAt']),
-      imageUrl: json['imageUrl'],
+      imageUrl: imageUrl,
       isLoading: json['isLoading'] ?? false,
       hasError: json['hasError'] ?? false,
     );

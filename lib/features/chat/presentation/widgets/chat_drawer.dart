@@ -199,7 +199,11 @@ class ChatDrawer extends StatelessWidget {
                         } else if (state is ChatLoaded &&
                             state.isChatsLoading) {
                           return const Center(
-                            child: CircularProgressIndicator(),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(),
+                            ),
                           );
                         }
                         return const SizedBox.shrink();
@@ -314,9 +318,7 @@ class ChatDrawer extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color:
                           isUpdating
-                              ? Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant
+                              ? Theme.of(context).colorScheme.onSurfaceVariant
                               : Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),

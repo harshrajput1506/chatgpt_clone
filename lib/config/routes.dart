@@ -1,22 +1,19 @@
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/presentation/pages/chat_page.dart';
 import 'package:chatgpt_clone/features/chat/presentation/pages/selectable_page.dart';
-import 'package:chatgpt_clone/features/settings/presentation/pages/settings_page.dart';
 import 'package:go_router/go_router.dart';
 
 class AppRoutes {
-  static const String home = '/';
   static const String chat = '/chat';
-  static const String settings = '/settings';
   static const String selectablePage = '/selectable';
 }
 
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: AppRoutes.home,
+    initialLocation: AppRoutes.chat,
     routes: [
       GoRoute(
-        path: AppRoutes.home,
+        path: AppRoutes.chat,
         builder: (context, state) => const ChatPage(),
       ),
       GoRoute(
@@ -24,10 +21,6 @@ class AppRouter {
         builder: (context, state) {
           return ChatPage();
         },
-      ),
-      GoRoute(
-        path: AppRoutes.settings,
-        builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
         path: AppRoutes.selectablePage,

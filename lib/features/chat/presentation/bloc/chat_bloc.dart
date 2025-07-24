@@ -63,6 +63,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
                   )
                   : Chat(id: '', title: 'New Chat', messages: [userMessage]),
           isResponding: true,
+          clearpickedImage: true, // Clear picked image after sending
+          clearErrorMessage: true, // Clear any previous error message
         ),
       );
     } else {
@@ -81,6 +83,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       content: event.message,
       isNewChat: isNewChat,
       chatId: chatId ?? '',
+      imageId: event.imageId,
     );
 
     if (state is! ChatLoaded) {
@@ -107,6 +110,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
                 ...chat.messages,
               ],
             ),
+            chats:
+                isNewChat ? [chat, ...currentState.chats] : currentState.chats,
             isResponding: false,
             clearpickedImage: true, // Clear picked image after sending
           ),
@@ -166,7 +171,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     );
     result.fold((failure) => emit(ChatError(failure.message)), (title) {
       final updatedChat = currentState.currentChat!.copyWith(title: title);
-      emit(currentState.copyWith(currentChat: updatedChat));
+      final updatedChats =
+          currentState.chats.map((chat) {
+            if (chat.id == currentState.currentChat!.id) {
+              return chat.copyWith(title: title);
+            }
+            return chat;
+          }).toList();
+      emit(
+        currentState.copyWith(currentChat: updatedChat, chats: updatedChats),
+      );
     });
   }
 
@@ -320,7 +334,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     // Pick image
     final pickedFile = await imagePicker.pickImage(source: event.source);
     if (pickedFile == null) {
-      emit(currentState.copyWith(error: 'No image selected.'));
       return;
     }
 
@@ -343,10 +356,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         );
       },
       (chatImage) {
+        print('Image uploaded successfully: $chatImage');
         emit(
           currentState.copyWith(
             isImageUploading: false,
             pickedImage: chatImage,
+            pickedImagePath: pickedFile.path, // Store the picked image path
+            clearError: true, // Clear any previous error
           ),
         );
       },

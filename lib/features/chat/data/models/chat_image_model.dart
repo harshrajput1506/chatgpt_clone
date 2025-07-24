@@ -15,7 +15,9 @@ class ChatImageModel extends ChatImage {
       publicId: json['publicId'] as String,
       originalName: json['originalName'] as String,
       originalUrl: json['originalUrl'] as String,
-      urls: json['urls'] as Map<String, String>,
+      urls: (json['urls'] as Map<String, dynamic>).map(
+        (key, value) => MapEntry(key, value as String),
+      ),
     );
   }
 }

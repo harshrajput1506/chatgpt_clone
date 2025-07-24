@@ -6,7 +6,7 @@ import '../utils/failures.dart';
 class MongoService {
   final Dio _dio;
   final String baseUrl = AppUrl.baseUrl;
-  final Logger _logger = Logger();
+  final Logger _logger = Logger(printer: PrettyPrinter());
 
   MongoService(this._dio);
 
@@ -17,7 +17,6 @@ class MongoService {
     String? imageId,
   }) async {
     try {
-      
       var body = {'content': content, 'sender': sender};
       if (imageId != null) {
         body['imageId'] = imageId;

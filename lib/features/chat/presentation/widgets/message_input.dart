@@ -10,7 +10,7 @@ import 'package:image_picker/image_picker.dart';
 
 class MessageInput extends StatelessWidget {
   final Function(String, String) onSendMessage;
-  final Function(String, String, ChatImage) onSendImage;
+  final Function(String, String, ChatImage) onSendImageMessage;
   final bool enabled;
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -29,7 +29,7 @@ class MessageInput extends StatelessWidget {
   const MessageInput({
     super.key,
     required this.onSendMessage,
-    required this.onSendImage,
+    required this.onSendImageMessage,
     required this.controller,
     required this.focusNode,
     required this.showModelChange,
@@ -87,6 +87,7 @@ class MessageInput extends StatelessWidget {
                     borderRadius: BorderRadius.circular(32),
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (pickedImagePath != null) ...[
                         Padding(
@@ -98,17 +99,20 @@ class MessageInput extends StatelessWidget {
                               color: Colors.grey,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child:
-                                isImageUploading
-                                    ? Center(
-                                      child: CircularProgressIndicator(
-                                        color: colorScheme.onSurface,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child:
+                                  isImageUploading
+                                      ? Center(
+                                        child: CircularProgressIndicator(
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      )
+                                      : Image.file(
+                                        File(pickedImagePath!),
+                                        fit: BoxFit.cover,
                                       ),
-                                    )
-                                    : Image.file(
-                                      File(pickedImagePath!),
-                                      fit: BoxFit.cover,
-                                    ),
+                            ),
                           ),
                         ),
                       ],
@@ -189,8 +193,8 @@ class MessageInput extends StatelessWidget {
                             InkWell(
                               onTap: () {
                                 if (isImageUploading) return;
-                                if (pickedImagePath != null) {
-                                  _onSendImageMessage(
+                                if (pickedImage != null) {
+                                  _onSendImageMessageMessage(
                                     pickedImage!,
                                     controller.text,
                                   );
@@ -297,10 +301,10 @@ class MessageInput extends StatelessWidget {
     );
   }
 
-  void _onSendImageMessage(ChatImage image, String content) {
+  void _onSendImageMessageMessage(ChatImage image, String content) {
     if (content.trim().isEmpty || !enabled) return;
 
-    onSendImage(
+    onSendImageMessage(
       content.trim(),
       AppConstants.availableModels[selectedModelIndex], // Use selected model
       image,

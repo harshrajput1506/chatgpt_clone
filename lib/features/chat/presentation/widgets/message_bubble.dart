@@ -19,9 +19,7 @@ class MessageBubble extends StatelessWidget {
     final isUser = message.role == MessageRole.user;
     final theme = Theme.of(context);
 
-    if (isUser &&
-        message.type == MessageType.text &&
-        message.content.isNotEmpty) {
+    if (isUser && message.content.isNotEmpty) {
       return OptionsMenu(
         menuController: controller,
         alignmentOffset: Offset(MediaQuery.of(context).size.width * 0.4, 0),
@@ -90,18 +88,43 @@ class MessageBubble extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(18.0),
-                  ),
-                  child: Text(
-                    message.content,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(220),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // display image if available
+                    if (message.imageUrl != null) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(18.0),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18.0),
+                          child: Image.network(
+                            message.imageUrl!,
+                            width: 200,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(18.0),
+                      ),
+                      child: Text(
+                        message.content,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(220),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],

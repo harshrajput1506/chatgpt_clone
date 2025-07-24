@@ -1,3 +1,4 @@
+import 'package:chatgpt_clone/core/constants/app_url.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:logger/web.dart';
 import '../utils/failures.dart';
@@ -7,9 +8,10 @@ class CloudinaryService {
   final Logger _logger = Logger(printer: PrettyPrinter());
 
   CloudinaryService() {
-    final cloudName = 'drhyzkn62';
-    final uploadPreset = 'chatgpt-clone';
-    _cloudinary = CloudinaryPublic(cloudName, uploadPreset);
+    _cloudinary = CloudinaryPublic(
+      AppUrl.cloudinaryCloudName,
+      AppUrl.cloudinaryPreset,
+    );
   }
 
   Future<Map<String, dynamic>> uploadImage(String imagePath) async {

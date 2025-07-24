@@ -151,6 +151,12 @@ class _ChatPageState extends State<ChatPage> {
             final pickedImagePath =
                 state is ChatLoaded ? state.pickedImagePath : null;
             final pickedImage = state is ChatLoaded ? state.pickedImage : null;
+
+            // debug print all state properties
+            debugPrint(
+              'ChatState: isResponding: $isResponding, isRegenerating: $isRegenerating, isChatLoading: $isChatLoading, isImageUploading: $isImageUploading, pickedImagePath: $pickedImagePath, pickedImage: $pickedImage',
+            );
+
             if (messages.isNotEmpty) {
               // Ensure the scroll position is at the bottom when loading
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -206,7 +212,7 @@ class _ChatPageState extends State<ChatPage> {
                   },
                   onSendMessage:
                       (content, model) => _sendMessage(context, content, model),
-                  onSendImage:
+                  onSendImageMessage:
                       (content, model, image) =>
                           _sendImageMessage(context, content, model, image),
                   enabled: !isResponding && !isRegenerating,
@@ -390,21 +396,16 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildEmptyState() {
     final theme = Theme.of(context);
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'Start a conversation',
-            style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          'What can I help you with?',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            color: theme.colorScheme.onSurface,
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
           ),
-          SizedBox(height: 8),
-          Text(
-            'Send a message to begin chatting',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -480,6 +481,7 @@ class _ChatPageState extends State<ChatPage> {
     ChatImage image,
   ) {
     // Implement image message event if needed in ChatBloc
+    print('Sending image message: $content, model: $model, image: ${image.id}');
     BlocProvider.of<ChatBloc>(context).add(
       SendMessageEvent(
         content,

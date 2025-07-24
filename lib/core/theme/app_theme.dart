@@ -28,7 +28,7 @@ class AppTheme {
     error: Colors.red.shade400,
     onError: Colors.black,
     surface: Colors.black,
-    onSurface: Colors.white,
+    onSurface: Colors.white70,
     surfaceContainer: Color(0xFF232325),
     onSurfaceVariant: Colors.white70,
     inverseSurface: Colors.white,

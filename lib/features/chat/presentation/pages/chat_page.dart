@@ -1,5 +1,7 @@
+import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -78,6 +80,18 @@ class _ChatPageState extends State<ChatPage> {
           });
           BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
         },
+        onRenameChat: () {
+          // Implement rename chat functionality
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Rename chat not implemented')),
+          );
+        },
+        onDeleteChat: () {
+          // Implement delete chat functionality
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Delete chat not implemented')),
+          );
+        },
       ),
       body: SafeArea(
         child: BlocConsumer<ChatBloc, ChatState>(
@@ -112,7 +126,10 @@ class _ChatPageState extends State<ChatPage> {
             }
             return Column(
               children: [
-                _buildAppBar(messages.isEmpty),
+                _buildAppBar(
+                  messages.isEmpty,
+                  state is ChatLoaded ? state.currentChat : null,
+                ),
                 Expanded(
                   child:
                       messages.isEmpty && !isChatLoading
@@ -136,66 +153,140 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildAppBar(bool isNewChat) {
+  Widget _buildAppBar(bool isNewChat, Chat? chat) {
+    final controller = MenuController();
     final theme = Theme.of(context);
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () {
-            // Open the chat drawer
-            _scaffoldKey.currentState?.openDrawer();
-          },
-          icon: SvgPicture.asset(
-            'assets/icons/menu.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              theme.colorScheme.onSurface,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          'ChatGPT',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        Spacer(),
-        if (!isNewChat) ...[
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
           IconButton(
-            icon: SvgPicture.asset(
-              'assets/icons/edit.svg',
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurfaceVariant,
-                BlendMode.srcIn,
-              ),
-            ),
             onPressed: () {
-              // Start a new chat
-              setState(() {
-                selectedChatIndex = -1; // Reset selected chat index
-              });
-              BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
+              // Open the chat drawer
+              _scaffoldKey.currentState?.openDrawer();
             },
-          ),
-          IconButton(
-            onPressed: () {},
             icon: SvgPicture.asset(
-              'assets/icons/three-dots.svg',
+              'assets/icons/menu.svg',
               width: 24,
               height: 24,
               colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurfaceVariant,
+                theme.colorScheme.onSurface,
                 BlendMode.srcIn,
               ),
             ),
           ),
+          const SizedBox(width: 4),
+          Text(
+            'ChatGPT',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          Spacer(),
+          if (!isNewChat) ...[
+            IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/edit.svg',
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  theme.colorScheme.onSurfaceVariant,
+                  BlendMode.srcIn,
+                ),
+              ),
+              onPressed: () {
+                // Start a new chat
+                setState(() {
+                  selectedChatIndex = -1; // Reset selected chat index
+                });
+                BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
+              },
+            ),
+            OptionsMenu(
+              menuController: controller,
+              menuItems: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Text(
+                      chat != null && chat.title.isNotEmpty
+                          ? chat.title
+                          : 'New Chat',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+                Divider(color: theme.colorScheme.onSurfaceVariant),
+                MenuItemButton(
+                  leadingIcon: SvgPicture.asset(
+                    'assets/icons/rename.svg',
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.fill,
+                    colorFilter: ColorFilter.mode(
+                      theme.colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  onPressed: () {},
+                  child: Text(
+                    'Rename',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                MenuItemButton(
+                  leadingIcon: SvgPicture.asset(
+                    'assets/icons/delete.svg',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.fill,
+                    colorFilter: ColorFilter.mode(
+                      theme.colorScheme.error,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  onPressed: () {},
+                  child: Text(
+                    'Delete',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+              child: IconButton(
+                onPressed: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                icon: SvgPicture.asset(
+                  'assets/icons/three-dots.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: ColorFilter.mode(
+                    theme.colorScheme.onSurfaceVariant,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 

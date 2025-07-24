@@ -126,13 +126,14 @@ class _MessageInputState extends State<MessageInput> {
                       ),
 
                       if (!canSend) ...[
-                        GestureDetector(
+                        InkWell(
                           onTap: () {
                             // Show model change options
                             setState(() {
                               showModelChange = !showModelChange;
                             });
                           },
+                          borderRadius: BorderRadius.circular(4),
                           child: Text(
                             AppConstants.availableModels[selectedModelIndex],
                             textAlign: TextAlign.center,
@@ -140,13 +141,14 @@ class _MessageInputState extends State<MessageInput> {
                                 ?.copyWith(color: colorScheme.secondary),
                           ),
                         ),
-                        GestureDetector(
+                        InkWell(
                           onTap: () {
                             // Show model change options
                             setState(() {
                               showModelChange = !showModelChange;
                             });
                           },
+                          borderRadius: BorderRadius.circular(24),
                           child: Container(
                             margin: const EdgeInsets.all(8.0),
                             padding: EdgeInsets.all(8),
@@ -166,8 +168,9 @@ class _MessageInputState extends State<MessageInput> {
                           ),
                         ),
                       ] else ...[
-                        GestureDetector(
+                        InkWell(
                           onTap: () => _sendMessage(_controller.text),
+                          borderRadius: BorderRadius.circular(24),
                           child: Container(
                             margin: const EdgeInsets.all(8.0),
                             padding: EdgeInsets.all(8),

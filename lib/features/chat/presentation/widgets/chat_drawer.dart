@@ -1,5 +1,6 @@
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_state.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
@@ -14,6 +15,8 @@ class ChatDrawer extends StatelessWidget {
   final VoidCallback onClear;
   final void Function(int, String) onChatTap;
   final VoidCallback onNewChat;
+  final VoidCallback onRenameChat;
+  final VoidCallback onDeleteChat;
   const ChatDrawer({
     super.key,
     required this.controller,
@@ -24,6 +27,8 @@ class ChatDrawer extends StatelessWidget {
     required this.onClear,
     required this.onChatTap,
     required this.onNewChat,
+    required this.onRenameChat,
+    required this.onDeleteChat,
   });
 
   @override
@@ -132,7 +137,7 @@ class ChatDrawer extends StatelessWidget {
                     _buildChatTile(
                       context: context,
                       title: 'Chats',
-                      onTap: () {},
+                      onTap: () {}, // Placeholder for chats
                       iconAssetPath: 'assets/icons/chats.svg',
                     ),
 
@@ -195,44 +200,101 @@ class ChatDrawer extends StatelessWidget {
     String? iconAssetPath,
     bool selected = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color:
-              selected
-                  ? Theme.of(context).colorScheme.surfaceContainer
-                  : Colors.transparent,
-        ),
-        child: Row(
-          children: [
-            if (iconAssetPath != null) ...[
-              SvgPicture.asset(
-                iconAssetPath,
-                width: 24,
-                height: 24,
-                colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.onSurface,
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(width: 16),
-            ],
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                softWrap: false,
-                textAlign: TextAlign.start,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+    final theme = Theme.of(context);
+    final controller = MenuController();
+    return OptionsMenu(
+      menuController: controller,
+      alignmentOffset: Offset(MediaQuery.of(context).size.width * 0.25, 0),
+      menuItems: [
+        MenuItemButton(
+          leadingIcon: SvgPicture.asset(
+            'assets/icons/rename.svg',
+            width: 20,
+            height: 20,
+            fit: BoxFit.fill,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurface,
+              BlendMode.srcIn,
             ),
-          ],
+          ),
+          onPressed: onRenameChat,
+          child: Text(
+            'Rename',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+        MenuItemButton(
+          leadingIcon: SvgPicture.asset(
+            'assets/icons/delete.svg',
+            width: 24,
+            height: 24,
+            fit: BoxFit.fill,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.error,
+              BlendMode.srcIn,
+            ),
+          ),
+          onPressed: onDeleteChat,
+          child: Text(
+            'Delete',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ),
+      ],
+      child: Material(
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: () {
+            if (controller.isOpen) {
+              controller.close(); // Close if already open
+            } else {
+              controller.open(); // Open the menu on long press
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color:
+                  selected
+                      ? Theme.of(context).colorScheme.surfaceContainer
+                      : Colors.transparent,
+            ),
+            child: Row(
+              children: [
+                if (iconAssetPath != null) ...[
+                  SvgPicture.asset(
+                    iconAssetPath,
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    softWrap: false,
+                    textAlign: TextAlign.start,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

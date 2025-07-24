@@ -16,6 +16,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<StartNewChatEvent>(_onStartNewChat);
     on<SearchChatEvent>(_onSearchChat);
     on<DeleteChatEvent>(_onDeleteChat);
+    on<UpdateChatTitleEvent>(_onUpdateChatTitle);
+    on<UpdateCurrentChatTitleEvent>(_onUpdateCurrentChatTitle);
   }
 
   Future<void> _onSendMessage(
@@ -206,6 +208,50 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final updatedChats =
           currentState.chats.where((chat) => chat.id != event.chatId).toList();
       emit(currentState.copyWith(chats: updatedChats, hasDeletedChat: true));
+
+      if (currentState.currentChat?.id == event.chatId) {
+        add(StartNewChatEvent());
+      }
     });
+  }
+
+  Future<void> _onUpdateChatTitle(
+    UpdateChatTitleEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatLoaded) return;
+    final currentState = state as ChatLoaded;
+    final result = await chatRepository.updateChatTitle(
+      chatId: event.chatId,
+      title: event.title,
+    );
+    result.fold((failure) => emit(ChatError(failure.message)), (_) {
+      final updatedChats =
+          currentState.chats.map((chat) {
+            if (chat.id == event.chatId) {
+              return chat.copyWith(title: event.title);
+            }
+            return chat;
+          }).toList();
+      emit(currentState.copyWith(chats: updatedChats, hasUpdatedTitle: true));
+
+      if (currentState.currentChat?.id == event.chatId) {
+        add(UpdateCurrentChatTitleEvent(event.title));
+      }
+    });
+  }
+
+  Future<void> _onUpdateCurrentChatTitle(
+    UpdateCurrentChatTitleEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatLoaded) return;
+    final currentState = state as ChatLoaded;
+    if (currentState.currentChat == null) return;
+
+    final updatedChat = currentState.currentChat!.copyWith(title: event.title);
+    emit(
+      currentState.copyWith(currentChat: updatedChat, hasUpdatedTitle: true),
+    );
   }
 }

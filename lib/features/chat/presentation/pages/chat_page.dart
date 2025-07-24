@@ -53,6 +53,8 @@ class _ChatPageState extends State<ChatPage> {
         focusNode: _searchFocusNode,
         hasText: hasText,
         selectedChatIndex: selectedChatIndex,
+        deltetingChatIndex: deltetingChatIndex,
+        updatingChatIndex: updatingChatIndex,
         onValueChange: (value) {
           setState(() {
             hasText = value.isNotEmpty;
@@ -82,55 +84,11 @@ class _ChatPageState extends State<ChatPage> {
           });
           BlocProvider.of<ChatBloc>(context).add(StartNewChatEvent());
         },
-        onRenameChat: () {
-          // Implement rename chat functionality
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rename chat not implemented')),
-          );
+        onRenameChat: (chatId, index, title) {
+          _showRenameDialog(chatId, index, title);
         },
         onDeleteChat: (chatId, index) {
-          // show confirmation dialog before deleting
-          showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text('Delete Chat'),
-                content: const Text(
-                  'Are you sure you want to delete this chat?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close the dialog
-                    },
-                    child: Text(
-                      'Cancel',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // Dispatch delete chat event
-                      BlocProvider.of<ChatBloc>(
-                        context,
-                      ).add(DeleteChatEvent(chatId: chatId));
-                      Navigator.of(context).pop();
-                      setState(() {
-                        deltetingChatIndex = index; // Set deleting chat index
-                        selectedChatIndex = -1; // Reset selected chat index
-                      }); // Close the dialog
-                    },
-                    child: Text(
-                      'Delete',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
+          _showDeleteDialog(chatId, index);
         },
       ),
       body: SafeArea(
@@ -285,7 +243,19 @@ class _ChatPageState extends State<ChatPage> {
                       BlendMode.srcIn,
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed:
+                      chat != null
+                          ? () {
+                            // Close the menu first
+                            controller.close();
+                            // Call the same rename logic as in drawer
+                            _showRenameDialog(
+                              chat.id,
+                              selectedChatIndex,
+                              chat.title,
+                            );
+                          }
+                          : null,
                   child: Text(
                     'Rename',
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -305,7 +275,15 @@ class _ChatPageState extends State<ChatPage> {
                       BlendMode.srcIn,
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed:
+                      chat != null
+                          ? () {
+                            // Close the menu first
+                            controller.close();
+                            // Call the same delete logic as in drawer
+                            _showDeleteDialog(chat.id, selectedChatIndex);
+                          }
+                          : null,
                   child: Text(
                     'Delete',
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -448,5 +426,124 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  void _showRenameDialog(String chatId, int index, String title) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final titleController = TextEditingController(text: title);
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final enabled = titleController.text.isNotEmpty;
+            return AlertDialog(
+              title: Text(
+                'New Chat Title',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              content: TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter new chat title',
+                ),
+                autofocus: true,
+                onChanged: (value) {
+                  setDialogState(() {
+                    // This will rebuild the dialog with the new enabled state
+                  });
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                TextButton(
+                  onPressed:
+                      enabled
+                          ? () {
+                            // Dispatch update chat title event
+                            BlocProvider.of<ChatBloc>(context).add(
+                              UpdateChatTitleEvent(
+                                chatId: chatId,
+                                title: titleController.text,
+                              ),
+                            );
+                            Navigator.of(context).pop();
+                            setState(() {
+                              updatingChatIndex =
+                                  index; // Set updating chat index
+                              selectedChatIndex =
+                                  -1; // Reset selected chat index
+                            });
+                          }
+                          : null,
+                  child: Text(
+                    'Rename',
+                    style:
+                        enabled
+                            ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            )
+                            : Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant.withAlpha(150),
+                            ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteDialog(String chatId, int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Chat'),
+          content: const Text('Are you sure you want to delete this chat?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text(
+                'Cancel',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Dispatch delete chat event
+                BlocProvider.of<ChatBloc>(
+                  context,
+                ).add(DeleteChatEvent(chatId: chatId));
+                Navigator.of(context).pop();
+                setState(() {
+                  deltetingChatIndex = index; // Set deleting chat index
+                  selectedChatIndex = -1; // Reset selected chat index
+                });
+              },
+              child: Text(
+                'Delete',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

@@ -114,4 +114,20 @@ class ChatRepositoryImpl implements ChatRepository {
       return Left(ServerFailure('Failed to delete chat'));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> updateChatTitle({
+    required String chatId,
+    required String title,
+  }) async {
+    try {
+      final uid = await UidHelper.getUid(); // Get the user ID
+      // Update the chat title in MongoDB service
+      await mongoService.updateChatTitle(chatId, title, uid);
+
+      return Right(null);
+    } catch (e) {
+      return Left(ServerFailure('Failed to update chat title'));
+    }
+  }
 }

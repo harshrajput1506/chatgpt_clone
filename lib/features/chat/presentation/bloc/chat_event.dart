@@ -53,3 +53,22 @@ class DeleteChatEvent extends ChatEvent {
   @override
   List<Object> get props => [chatId];
 }
+
+class UpdateChatTitleEvent extends ChatEvent {
+  final String chatId;
+  final String title;
+
+  UpdateChatTitleEvent({required this.chatId, required this.title});
+
+  @override
+  List<Object> get props => [chatId, title];
+}
+
+class UpdateCurrentChatTitleEvent extends ChatEvent {
+  final String title;
+
+  UpdateCurrentChatTitleEvent(this.title);
+
+  @override
+  List<Object> get props => [title];
+}

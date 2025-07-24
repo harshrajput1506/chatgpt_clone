@@ -165,11 +165,11 @@ class MongoService {
     }
   }
 
-  Future<void> updateChatTitle(String chatId, String title) async {
+  Future<void> updateChatTitle(String chatId, String title, String uid) async {
     try {
       final response = await _dio.put(
         '$baseUrl/chats/$chatId',
-        data: {'title': title},
+        data: {'title': title, uid: uid},
       );
       _logger.i(
         'Chat title updated successfully: ${response.data}, status: ${response.statusCode}',

@@ -17,7 +17,7 @@ class ChatDrawer extends StatelessWidget {
   final VoidCallback onClear;
   final void Function(int, String) onChatTap;
   final VoidCallback onNewChat;
-  final VoidCallback onRenameChat;
+  final void Function(String, int, String) onRenameChat;
   final void Function(String, int) onDeleteChat;
   const ChatDrawer({
     super.key,
@@ -173,7 +173,11 @@ class ChatDrawer extends StatelessWidget {
                                       context.pop();
                                     },
                                     onRenameChat: () {
-                                      onRenameChat();
+                                      onRenameChat(
+                                        chat.id,
+                                        state.chats.indexOf(chat),
+                                        chat.title,
+                                      );
                                     },
                                     onDeleteChat: () {
                                       onDeleteChat(
@@ -310,9 +314,11 @@ class ChatDrawer extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color:
                           isUpdating
-                              ? Theme.of(context).colorScheme.onSurfaceVariant
+                              ? Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant.withAlpha(150)
                               : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

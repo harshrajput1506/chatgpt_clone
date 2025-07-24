@@ -137,7 +137,9 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildAppBar() {
     return BlocBuilder<CurrentChatBloc, CurrentChatState>(
       builder: (context, state) {
-        final isNewChat = state is CurrentChatLoaded && state.isNewChat;
+        final isNewChat =
+            (state is CurrentChatLoaded && state.isNewChat) ||
+            state is CurrentChatInitial;
         final chat = state is CurrentChatLoaded ? state.chat : null;
 
         return _AppBarWidget(

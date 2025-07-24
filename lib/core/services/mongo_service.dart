@@ -161,4 +161,28 @@ class MongoService {
       throw ServerFailure('Failed to generate chat title');
     }
   }
+
+  Future<void> updateChatTitle(
+    String chatId,
+    String title,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '$baseUrl/chats/$chatId',
+        data: {'title': title},
+      );
+      _logger.i(
+        'Chat title updated successfully: ${response.data}, status: ${response.statusCode}',
+      );
+      if (response.statusCode != 200) {
+        throw ServerFailure('Failed to update chat title');
+      }
+      if (response.data == null || response.data['success'] != true) {
+        throw ServerFailure('Invalid chat title update data');
+      }
+    } catch (e) {
+      _logger.e('Failed to update chat title: $e');
+      throw ServerFailure('Failed to update chat title: $e');
+    }
+  }
 }

@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/chats', validateUserAccess, getChats);
 router.get('/chats/:id', validateObjectId, getChatById);
 router.post('/chats', validateChatCreation, createChat);
-//router.put('/chats/:id', validateObjectId, validateChatUpdate, updateChat);
+router.put('/chats/:id', validateObjectId, validateChatUpdate, updateChat);
 router.delete('/chats/:id', validateObjectId, deleteChat);
 router.post('/chats/:id/generate-title', validateObjectId, generateTitleForChat);
 

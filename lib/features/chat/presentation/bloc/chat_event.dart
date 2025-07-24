@@ -44,3 +44,12 @@ class SearchChatEvent extends ChatEvent {
   @override
   List<Object> get props => [query];
 }
+
+class DeleteChatEvent extends ChatEvent {
+  final String chatId;
+
+  DeleteChatEvent({required this.chatId});
+
+  @override
+  List<Object> get props => [chatId];
+}

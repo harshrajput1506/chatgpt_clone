@@ -16,4 +16,5 @@ abstract class ChatRepository {
   Future<Either<Failure, List<Chat>>> getAllChats();
 
   Future<Either<Failure, String>> generateChatTitle({required String chatId});
+  Future<Either<Failure, void>> deleteChat({required String chatId});
 }

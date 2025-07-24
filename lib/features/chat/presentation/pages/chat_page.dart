@@ -23,6 +23,8 @@ class _ChatPageState extends State<ChatPage> {
   final FocusNode _searchFocusNode = FocusNode();
   bool hasText = false; // Track if there's text in the search input
   var selectedChatIndex = -1; // Track selected chat index
+  var deltetingChatIndex = -1; // Track deleting chat index
+  var updatingChatIndex = -1; // Track updating chat index
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -86,10 +88,48 @@ class _ChatPageState extends State<ChatPage> {
             const SnackBar(content: Text('Rename chat not implemented')),
           );
         },
-        onDeleteChat: () {
-          // Implement delete chat functionality
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Delete chat not implemented')),
+        onDeleteChat: (chatId, index) {
+          // show confirmation dialog before deleting
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Delete Chat'),
+                content: const Text(
+                  'Are you sure you want to delete this chat?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the dialog
+                    },
+                    child: Text(
+                      'Cancel',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      // Dispatch delete chat event
+                      BlocProvider.of<ChatBloc>(
+                        context,
+                      ).add(DeleteChatEvent(chatId: chatId));
+                      Navigator.of(context).pop();
+                      setState(() {
+                        deltetingChatIndex = index; // Set deleting chat index
+                        selectedChatIndex = -1; // Reset selected chat index
+                      }); // Close the dialog
+                    },
+                    child: Text(
+                      'Delete',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -105,6 +145,16 @@ class _ChatPageState extends State<ChatPage> {
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+            }
+            if (state is ChatLoaded && state.hasDeletedChat) {
+              setState(() {
+                deltetingChatIndex = -1; // Reset deleting chat index
+              });
+            }
+            if (state is ChatLoaded && state.hasUpdatedTitle) {
+              setState(() {
+                updatingChatIndex = -1; // Reset updating chat index
+              });
             }
           },
           buildWhen: (previous, current) => current is ChatLoaded,

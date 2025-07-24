@@ -15,6 +15,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<LoadChatEvent>(_onLoadChat);
     on<StartNewChatEvent>(_onStartNewChat);
     on<SearchChatEvent>(_onSearchChat);
+    on<DeleteChatEvent>(_onDeleteChat);
   }
 
   Future<void> _onSendMessage(
@@ -192,5 +193,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(
       currentState.copyWith(isSearching: true, searchResults: filteredChats),
     );
+  }
+
+  Future<void> _onDeleteChat(
+    DeleteChatEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatLoaded) return;
+    final currentState = state as ChatLoaded;
+    final result = await chatRepository.deleteChat(chatId: event.chatId);
+    result.fold((failure) => emit(ChatError(failure.message)), (_) {
+      final updatedChats =
+          currentState.chats.where((chat) => chat.id != event.chatId).toList();
+      emit(currentState.copyWith(chats: updatedChats, hasDeletedChat: true));
+    });
   }
 }

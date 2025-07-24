@@ -11,12 +11,14 @@ class ChatDrawer extends StatelessWidget {
   final FocusNode focusNode;
   final bool hasText; // Track if there's text in the input
   final int selectedChatIndex; // Track selected chat index
+  final int deltetingChatIndex; // Track deleting chat index
+  final int updatingChatIndex; // Track updating chat index
   final void Function(String) onValueChange;
   final VoidCallback onClear;
   final void Function(int, String) onChatTap;
   final VoidCallback onNewChat;
   final VoidCallback onRenameChat;
-  final VoidCallback onDeleteChat;
+  final void Function(String, int) onDeleteChat;
   const ChatDrawer({
     super.key,
     required this.controller,
@@ -29,6 +31,8 @@ class ChatDrawer extends StatelessWidget {
     required this.onNewChat,
     required this.onRenameChat,
     required this.onDeleteChat,
+    this.deltetingChatIndex = -1,
+    this.updatingChatIndex = -1,
   });
 
   @override
@@ -168,9 +172,23 @@ class ChatDrawer extends StatelessWidget {
                                       // Close the drawer
                                       context.pop();
                                     },
+                                    onRenameChat: () {
+                                      onRenameChat();
+                                    },
+                                    onDeleteChat: () {
+                                      onDeleteChat(
+                                        chat.id,
+                                        state.chats.indexOf(chat),
+                                      );
+                                    },
                                     selected:
                                         selectedChatIndex ==
                                         state.chats.indexOf(chat),
+                                    isUpdating:
+                                        updatingChatIndex ==
+                                            state.chats.indexOf(chat) ||
+                                        deltetingChatIndex ==
+                                            state.chats.indexOf(chat),
                                   );
                                 }).toList(),
                           );
@@ -197,8 +215,11 @@ class ChatDrawer extends StatelessWidget {
     required BuildContext context,
     required String title,
     required VoidCallback onTap,
+    VoidCallback? onRenameChat,
+    VoidCallback? onDeleteChat,
     String? iconAssetPath,
     bool selected = false,
+    bool isUpdating = false,
   }) {
     final theme = Theme.of(context);
     final controller = MenuController();
@@ -287,7 +308,10 @@ class ChatDrawer extends StatelessWidget {
                     textAlign: TextAlign.start,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color:
+                          isUpdating
+                              ? Theme.of(context).colorScheme.onSurfaceVariant
+                              : Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w400,
                     ),
                   ),

@@ -130,9 +130,12 @@ class MongoService {
     }
   }
 
-  Future<void> deleteChat(String chatId) async {
+  Future<void> deleteChat(String chatId, String uid) async {
     try {
-      await _dio.delete('$baseUrl/chats/$chatId');
+      await _dio.delete(
+        '$baseUrl/chats/$chatId',
+        queryParameters: {'uid': uid},
+      );
     } catch (e) {
       _logger.e('Failed to delete chat: $e');
       throw ServerFailure('Failed to delete chat: $e');
@@ -162,10 +165,7 @@ class MongoService {
     }
   }
 
-  Future<void> updateChatTitle(
-    String chatId,
-    String title,
-  ) async {
+  Future<void> updateChatTitle(String chatId, String title) async {
     try {
       final response = await _dio.put(
         '$baseUrl/chats/$chatId',

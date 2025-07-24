@@ -78,9 +78,6 @@ export const createChat = async (req, res) => {
                 title: title || 'New Chat',
                 uid
             },
-            include: {
-                messages: true
-            }
         });
 
         res.status(201).json({
@@ -111,16 +108,6 @@ export const updateChat = async (req, res) => {
         const chat = await prisma.chat.update({
             where: whereClause,
             data: { title },
-            include: {
-                messages: {
-                    include: {
-                        image: true
-                    },
-                    orderBy: {
-                        createdAt: 'asc'
-                    }
-                }
-            }
         });
 
         res.json({

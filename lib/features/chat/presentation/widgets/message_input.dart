@@ -1,43 +1,46 @@
 import 'package:chatgpt_clone/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:image_picker/image_picker.dart';
+
 // import 'package:file_picker/file_picker.dart';
 
-class MessageInput extends StatefulWidget {
+class MessageInput extends StatelessWidget {
   final Function(String, String) onSendMessage;
   final Function(String, String, String) onSendImage;
   final bool enabled;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool showModelChange;
+  final int selectedModelIndex;
+  final bool showImagePickerOptions;
+  final VoidCallback onToggleModelChange;
+  final Function(ImageSource) onPickImage;
+  final VoidCallback onToggleImagePickerOptions;
+  final Function(int) onModelSelected;
+  final Function(String) onTextChanged;
 
   const MessageInput({
     super.key,
     required this.onSendMessage,
     required this.onSendImage,
+    required this.controller,
+    required this.focusNode,
+    required this.showModelChange,
+    required this.selectedModelIndex,
+    required this.onToggleModelChange,
+    required this.onModelSelected,
+    required this.onTextChanged,
+    required this.onToggleImagePickerOptions,
+    required this.showImagePickerOptions,
+    required this.onPickImage,
     this.enabled = true,
   });
 
   @override
-  State<MessageInput> createState() => _MessageInputState();
-}
-
-class _MessageInputState extends State<MessageInput> {
-  final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  // Move these to be fields so their state persists and can be updated
-  bool showModelChange = false; // Show model change when input is empty
-  int selectedModelIndex = 0; // Default to first model
-
-  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    var canSend = _controller.text.isNotEmpty;
+    var canSend = controller.text.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -54,7 +57,7 @@ class _MessageInputState extends State<MessageInput> {
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  onPressed: widget.enabled ? _pickImage : null,
+                  onPressed: onToggleImagePickerOptions,
                   icon: SvgPicture.asset(
                     'assets/icons/gallery.svg',
                     width: 24,
@@ -91,9 +94,9 @@ class _MessageInputState extends State<MessageInput> {
                               maxHeight: 150,
                             ), // add expand button later
                             child: TextField(
-                              controller: _controller,
-                              focusNode: _focusNode,
-                              enabled: widget.enabled,
+                              controller: controller,
+                              focusNode: focusNode,
+                              enabled: enabled,
                               maxLines: null,
                               textCapitalization: TextCapitalization.sentences,
                               decoration: InputDecoration(
@@ -107,19 +110,7 @@ class _MessageInputState extends State<MessageInput> {
                               ),
                               cursorColor: colorScheme.onSurface,
                               onSubmitted: _sendMessage,
-                              onChanged: (value) {
-                                if (value.isEmpty) {
-                                  // show model change button
-                                  setState(() {
-                                    canSend = false;
-                                  });
-                                } else {
-                                  // show send message button
-                                  setState(() {
-                                    canSend = true;
-                                  });
-                                }
-                              },
+                              onChanged: onTextChanged,
                             ),
                           ),
                         ),
@@ -127,12 +118,7 @@ class _MessageInputState extends State<MessageInput> {
 
                       if (!canSend) ...[
                         InkWell(
-                          onTap: () {
-                            // Show model change options
-                            setState(() {
-                              showModelChange = !showModelChange;
-                            });
-                          },
+                          onTap: onToggleModelChange,
                           borderRadius: BorderRadius.circular(4),
                           child: Text(
                             AppConstants.availableModels[selectedModelIndex],
@@ -142,12 +128,7 @@ class _MessageInputState extends State<MessageInput> {
                           ),
                         ),
                         InkWell(
-                          onTap: () {
-                            // Show model change options
-                            setState(() {
-                              showModelChange = !showModelChange;
-                            });
-                          },
+                          onTap: onToggleModelChange,
                           borderRadius: BorderRadius.circular(24),
                           child: Container(
                             margin: const EdgeInsets.all(8.0),
@@ -169,7 +150,7 @@ class _MessageInputState extends State<MessageInput> {
                         ),
                       ] else ...[
                         InkWell(
-                          onTap: () => _sendMessage(_controller.text),
+                          onTap: () => _sendMessage(controller.text),
                           borderRadius: BorderRadius.circular(24),
                           child: Container(
                             margin: const EdgeInsets.all(8.0),
@@ -211,13 +192,55 @@ class _MessageInputState extends State<MessageInput> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   onSelected: (selected) {
-                    setState(() {
-                      selectedModelIndex = index;
-                      showModelChange = false; // Hide after selection
-                    });
+                    if (selected) {
+                      onModelSelected(index);
+                    }
                   },
                 ),
               ),
+            ),
+          ],
+
+          // Show image picker option
+          if (showImagePickerOptions) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => onPickImage(ImageSource.camera),
+                  label: Text(
+                    'Camera',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  icon: SvgPicture.asset(
+                    'assets/icons/camera.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+
+                OutlinedButton.icon(
+                  onPressed: () => onPickImage(ImageSource.gallery),
+                  label: Text(
+                    'Gallery',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  icon: SvgPicture.asset(
+                    'assets/icons/image.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -226,32 +249,13 @@ class _MessageInputState extends State<MessageInput> {
   }
 
   void _sendMessage(String content) {
-    if (content.trim().isEmpty || !widget.enabled) return;
+    if (content.trim().isEmpty || !enabled) return;
 
-    widget.onSendMessage(
+    onSendMessage(
       content.trim(),
       AppConstants.availableModels[selectedModelIndex], // Use selected model,
     );
-    _controller.clear();
-    _focusNode.requestFocus();
-  }
-
-  void _pickImage() async {
-    // In a real app, you would use file_picker here
-    // final result = await FilePicker.platform.pickFiles(
-    //   type: FileType.image,
-    //   allowMultiple: false,
-    // );
-
-    // if (result != null && result.files.single.path != null) {
-    //   widget.onSendImage(result.files.single.path!, 'Describe this image');
-    // }
-
-    // For demo purposes, just show a placeholder
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image picker would open here in a real implementation'),
-      ),
-    );
+    controller.clear();
+    focusNode.requestFocus();
   }
 }

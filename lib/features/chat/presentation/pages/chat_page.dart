@@ -1,3 +1,5 @@
+import 'package:chatgpt_clone/core/constants/app_constants.dart';
+import 'package:chatgpt_clone/core/utils/permission_helper.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
@@ -5,6 +7,7 @@ import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.da
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 import '../bloc/chat_bloc.dart';
@@ -21,12 +24,20 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final TextEditingController _messageController = TextEditingController();
+  final FocusNode _messageFocusNode = FocusNode();
   bool hasText = false; // Track if there's text in the search input
   var selectedChatIndex = -1; // Track selected chat index
   var deltetingChatIndex = -1; // Track deleting chat index
   var updatingChatIndex = -1; // Track updating chat index
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Message input state
+  bool _showModelChange = false; // Show model change when input is empty
+  int _selectedModelIndex = 0; // Default to first model
+
+  bool _showImagePickerOptions = false; // Show image picker options
 
   @override
   void initState() {
@@ -40,6 +51,8 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _messageController.dispose();
+    _messageFocusNode.dispose();
     super.dispose();
   }
 
@@ -149,12 +162,52 @@ class _ChatPageState extends State<ChatPage> {
                 if (isResponding) _buildTypingIndicator(),
                 if (isRegenerating) _buildRegeneratingIndicator(),
                 MessageInput(
+                  controller: _messageController,
+                  focusNode: _messageFocusNode,
+                  showModelChange: _showModelChange,
+                  selectedModelIndex: _selectedModelIndex,
+                  showImagePickerOptions: _showImagePickerOptions,
+                  onToggleModelChange: () {
+                    setState(() {
+                      _showImagePickerOptions =
+                          false; // Hide image picker options
+                      _showModelChange = !_showModelChange;
+                    });
+                  },
+                  onToggleImagePickerOptions: () {
+                    setState(() {
+                      _showModelChange = false; // Hide model change
+                      _showImagePickerOptions = !_showImagePickerOptions;
+                    });
+                  },
+                  onModelSelected: (index) {
+                    setState(() {
+                      _selectedModelIndex = index;
+                      _showModelChange = false; // Hide after selection
+                    });
+                  },
+                  onTextChanged: (value) {
+                    setState(() {
+                      // This will trigger rebuild to show/hide send button
+                    });
+                  },
                   onSendMessage:
                       (content, model) => _sendMessage(context, content, model),
                   onSendImage:
                       (imagePath, caption, model) =>
                           _sendImageMessage(context, imagePath, caption),
                   enabled: !isResponding && !isRegenerating,
+                  onPickImage: (source) {
+                    if (!isResponding &&
+                        !isRegenerating &&
+                        _showImagePickerOptions) {
+                      _pickImage(source);
+                      setState(() {
+                        _showImagePickerOptions =
+                            false; // Hide options after pick
+                      });
+                    }
+                  },
                 ),
               ],
             );
@@ -402,6 +455,8 @@ class _ChatPageState extends State<ChatPage> {
     if (content.trim().isEmpty) return;
     // You may want to pass the selected model from UI
     BlocProvider.of<ChatBloc>(context).add(SendMessageEvent(content, model));
+    _messageController.clear();
+    _messageFocusNode.requestFocus();
     _scrollToBottom();
   }
 
@@ -420,11 +475,13 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  void _pickImage(ImageSource source) {
+    BlocProvider.of<ChatBloc>(context).add(PickImageEvent(source: source));
+  }
 
   void _regenerateResponse(BuildContext context, String messageId) {
     // Use the first model as default (same as the input widget default)
-    const String selectedModel =
-        'gpt-4o-mini'; // Default model from AppConstants.availableModels[0]
+    String selectedModel = AppConstants.availableModels[_selectedModelIndex];
 
     context.read<ChatBloc>().add(
       RegenerateResponseEvent(messageId: messageId, model: selectedModel),

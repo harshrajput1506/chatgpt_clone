@@ -1,13 +1,11 @@
 import express from 'express';
 import {
-    uploadImage,
-    uploadMultipleImages,
+    createImage,
     deleteImage,
     getImages,
     getImageById
 } from '../controllers/imageController.js';
-import { uploadSingle, uploadMultiple, handleMulterError, requireMultipart } from '../middleware/upload.js';
-import { validateObjectId } from '../middleware/validation.js';
+import { validateObjectId, validateImageCreation } from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -17,8 +15,8 @@ router.get('/test', (req, res) => {
         success: true,
         message: 'Image API is working',
         endpoints: {
-            upload: 'POST /api/images/upload (requires multipart/form-data with "image" field)',
-            uploadMultiple: 'POST /api/images/upload/multiple (requires multipart/form-data with "images" field)',
+            create: 'POST /api/images (requires JSON with publicId, url, originalName)',
+            createMultiple: 'POST /api/images/create/multiple (requires JSON with array of image objects)',
             getAll: 'GET /api/images/',
             getById: 'GET /api/images/:id',
             delete: 'DELETE /api/images/:id'
@@ -26,12 +24,11 @@ router.get('/test', (req, res) => {
     });
 });
 
-// Image upload routes
-router.post('/upload', requireMultipart, uploadSingle, uploadImage);
-//router.post('/upload/multiple', requireMultipart, uploadMultiple, uploadMultipleImages);
+// Image creation routes
+router.post('/', validateImageCreation, createImage);
 
 // Image management routes
-router.get('/', getImages);
+//router.get('/', getImages);
 router.get('/:id', validateObjectId, getImageById);
 router.delete('/:id', validateObjectId, deleteImage);
 

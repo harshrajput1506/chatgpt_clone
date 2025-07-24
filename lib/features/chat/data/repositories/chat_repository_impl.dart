@@ -1,9 +1,11 @@
+import 'package:chatgpt_clone/core/services/cloudinary_service.dart';
 import 'package:chatgpt_clone/core/services/mongo_service.dart';
 import 'package:chatgpt_clone/core/services/openai_service.dart';
 import 'package:chatgpt_clone/core/utils/failures.dart';
 import 'package:chatgpt_clone/core/utils/uid_helper.dart';
 import 'package:chatgpt_clone/features/chat/data/models/chat_model.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
+import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.dart';
 import 'package:chatgpt_clone/features/chat/data/models/message_model.dart';
 import 'package:dartz/dartz.dart';
@@ -12,8 +14,13 @@ import 'package:logger/web.dart';
 class ChatRepositoryImpl implements ChatRepository {
   final OpenAIService openAIService;
   final MongoService mongoService;
+  final CloudinaryService cloudinaryService;
   final Logger _logger = Logger();
-  ChatRepositoryImpl({required this.openAIService, required this.mongoService});
+  ChatRepositoryImpl({
+    required this.openAIService,
+    required this.mongoService,
+    required this.cloudinaryService,
+  });
 
   @override
   Future<Either<Failure, Chat>> sendMessage({
@@ -154,6 +161,24 @@ class ChatRepositoryImpl implements ChatRepository {
       return Left(e);
     } catch (e) {
       return Left(ServerFailure('Failed to regenerate response'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ChatImage>> uploadImage({
+    required String imagePath,
+  }) async {
+    try {
+      // Upload the image on the cloudinary
+      final response = await cloudinaryService.uploadImage(imagePath);
+
+      // save the image in mongoDB
+      
+
+      return Right(ChatImage(url: imageUrl));
+    } catch (e) {
+      _logger.e('Failed to upload image: $e');
+      return Left(ServerFailure('Failed to upload image: $e'));
     }
   }
 }

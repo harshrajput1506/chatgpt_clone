@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
+import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/utils/failures.dart';
 
@@ -22,5 +23,9 @@ abstract class ChatRepository {
     required String chatId,
     required String messageId,
     required String model,
+  });
+
+  Future<Either<Failure, ChatImage>> uploadImage({
+    required String imagePath
   });
 }

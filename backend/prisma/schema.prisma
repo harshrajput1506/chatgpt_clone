@@ -33,10 +33,6 @@ model Image {
   publicId     String    @unique
   url          String
   originalName String
-  size         Int
-  format       String
-  width        Int
-  height       Int
   createdAt    DateTime  @default(now())
   messages     Message[]
 }

@@ -1,13 +1,17 @@
+import 'package:chatgpt_clone/core/utils/permission_helper.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_event.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatRepository chatRepository;
-  ChatBloc({required this.chatRepository}) : super(ChatInitial()) {
+  final ImagePicker imagePicker;
+  ChatBloc({required this.chatRepository, required this.imagePicker})
+    : super(ChatInitial()) {
     // event handlers
     on<SendMessageEvent>(_onSendMessage);
     on<LoadChatsEvent>(_onLoadChats);
@@ -291,5 +295,33 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         );
       },
     );
+  }
+
+  Future<void> _onPickImage(
+    PickImageEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    // Check permissions
+    if (state is! ChatLoaded) return;
+    final currentState = state as ChatLoaded;
+    final hasPermissions = await PermissionHelper.requestImagePermissions();
+    if (!hasPermissions) {
+      emit(
+        currentState.copyWith(
+          error: 'Permission denied to access the gallery or camera.',
+        ),
+      );
+      return;
+    }
+
+    // Pick image
+    final pickedFile = await imagePicker.pickImage(source: event.source);
+    if (pickedFile == null) {
+      emit(currentState.copyWith(error: 'No image selected.'));
+      return;
+    }
+
+    
+
   }
 }

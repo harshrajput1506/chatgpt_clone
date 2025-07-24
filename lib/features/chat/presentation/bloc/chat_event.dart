@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:image_picker/image_picker.dart';
 
 abstract class ChatEvent extends Equatable {}
 
@@ -81,4 +82,12 @@ class RegenerateResponseEvent extends ChatEvent {
 
   @override
   List<Object> get props => [messageId, model];
+}
+
+class PickImageEvent extends ChatEvent {
+  final ImageSource source;
+  PickImageEvent({required this.source});
+
+  @override
+  List<Object> get props => [source];
 }

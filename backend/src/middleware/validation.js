@@ -55,7 +55,7 @@ export const validateUserAccess = (req, res, next) => {
     }
 
     next();
-}; 
+};
 export const validateMessageCreation = (req, res, next) => {
     const { content, sender, imageId } = req.body;
 
@@ -89,7 +89,7 @@ export const validateMessageCreation = (req, res, next) => {
 
     req.body.content = content.trim();
     next();
-}; 
+};
 export const validateObjectId = (req, res, next) => {
     const { id, chatId, messageId } = req.params;
     const objectIdRegex = /^[0-9a-fA-F]{24}$/;
@@ -106,5 +106,45 @@ export const validateObjectId = (req, res, next) => {
         return res.status(400).json({ error: 'Invalid message ID format' });
     }
 
+    next();
+};
+
+export const validateImageCreation = (req, res, next) => {
+    const { publicId, url, originalName } = req.body;
+
+    if (!publicId || typeof publicId !== 'string') {
+        return res.status(400).json({ error: 'Public ID is required and must be a string' });
+    }
+
+    if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: 'URL is required and must be a string' });
+    }
+
+    if (!originalName || typeof originalName !== 'string') {
+        return res.status(400).json({ error: 'Original name is required and must be a string' });
+    }
+
+    if (publicId.trim().length === 0) {
+        return res.status(400).json({ error: 'Public ID cannot be empty' });
+    }
+
+    if (url.trim().length === 0) {
+        return res.status(400).json({ error: 'URL cannot be empty' });
+    }
+
+    if (originalName.trim().length === 0) {
+        return res.status(400).json({ error: 'Original name cannot be empty' });
+    }
+
+    // Basic URL validation
+    try {
+        new URL(url);
+    } catch (error) {
+        return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    req.body.publicId = publicId.trim();
+    req.body.url = url.trim();
+    req.body.originalName = originalName.trim();
     next();
 };

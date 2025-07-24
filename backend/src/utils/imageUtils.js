@@ -46,39 +46,8 @@ export const formatImageResponse = (image) => {
         id: image.id,
         publicId: image.publicId,
         originalName: image.originalName,
-        size: image.size,
-        format: image.format,
-        dimensions: {
-            width: image.width,
-            height: image.height
-        },
+        originalUrl: image.url,
         urls: generateImageVariants(image.publicId),
         createdAt: image.createdAt
-    };
-};
-
-// Validate image for Flutter requirements
-export const validateImageForFlutter = (file) => {
-    const errors = [];
-
-    // Check file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.mimetype)) {
-        errors.push('Invalid file type. Only JPEG, PNG, GIF, and WebP are supported.');
-    }
-
-    // Check file size (5MB for mobile optimization)
-    if (file.size > 5 * 1024 * 1024) {
-        errors.push('File size too large. Maximum 5MB allowed for optimal mobile performance.');
-    }
-
-    // Check if file has content
-    if (file.size === 0) {
-        errors.push('File is empty.');
-    }
-
-    return {
-        isValid: errors.length === 0,
-        errors
     };
 };

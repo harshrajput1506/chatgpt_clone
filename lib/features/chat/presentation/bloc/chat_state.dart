@@ -28,8 +28,11 @@ class ChatLoaded extends ChatState {
   final bool hasUpdatedTitle;
   final bool hasDeletedChat;
   final bool isRegenerating;
+  final bool isImageLoading;
+  final String? selectedImagePath;
+  final String? selectedImageId;
   final List<Chat> searchResults;
-
+  final String? error;
   ChatLoaded({
     this.currentChat,
     this.isChatsLoading = false,
@@ -41,7 +44,11 @@ class ChatLoaded extends ChatState {
     this.hasUpdatedTitle = false,
     this.hasDeletedChat = false,
     this.isRegenerating = false,
+    this.isImageLoading = false,
+    this.selectedImagePath,
+    this.selectedImageId,
     this.searchResults = const [],
+    this.error,
   });
 
   ChatLoaded copyWith({
@@ -59,6 +66,11 @@ class ChatLoaded extends ChatState {
     bool? hasUpdatedTitle,
     bool? hasDeletedChat,
     bool? isRegenerating,
+    bool? isImageLoading,
+    String? selectedImagePath,
+    String? selectedImageId,
+    bool clearSelectedImage = false,
+    String? error,
   }) {
     return ChatLoaded(
       currentChat: clearCurrentChat ? null : (currentChat ?? this.currentChat),
@@ -74,6 +86,14 @@ class ChatLoaded extends ChatState {
       hasUpdatedTitle: hasUpdatedTitle ?? this.hasUpdatedTitle,
       hasDeletedChat: hasDeletedChat ?? this.hasDeletedChat,
       isRegenerating: isRegenerating ?? this.isRegenerating,
+      isImageLoading: isImageLoading ?? this.isImageLoading,
+      error: error ?? this.error,
+      selectedImagePath:
+          clearSelectedImage
+              ? null
+              : (selectedImagePath ?? this.selectedImagePath),
+      selectedImageId:
+          clearSelectedImage ? null : (selectedImageId ?? this.selectedImageId),
     );
   }
 
@@ -90,5 +110,7 @@ class ChatLoaded extends ChatState {
     hasUpdatedTitle,
     hasDeletedChat,
     isRegenerating,
+    error,
+    isImageLoading,
   ];
 }

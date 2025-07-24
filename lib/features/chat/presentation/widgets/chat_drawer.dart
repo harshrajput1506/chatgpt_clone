@@ -123,10 +123,18 @@ class ChatDrawer extends StatelessWidget {
         width: double.infinity,
         child: OutlinedButton.icon(
           onPressed: onNewChat,
-          icon: Icon(Icons.add, color: theme.colorScheme.primary),
+          icon: SvgPicture.asset(
+            'assets/icons/edit.svg',
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurface,
+              BlendMode.srcIn,
+            ),
+          ),
           label: Text(
             'New Chat',
-            style: TextStyle(color: theme.colorScheme.primary),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
         ),
       ),
@@ -326,7 +334,7 @@ class _ChatTile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text('Rename'),
+                              Text('Rename', style: theme.textTheme.bodyMedium),
                             ],
                           ),
                         ),
@@ -336,8 +344,8 @@ class _ChatTile extends StatelessWidget {
                             children: [
                               SvgPicture.asset(
                                 'assets/icons/delete.svg',
-                                width: 16,
-                                height: 16,
+                                width: 20,
+                                height: 20,
                                 colorFilter: ColorFilter.mode(
                                   theme.colorScheme.error,
                                   BlendMode.srcIn,
@@ -346,7 +354,7 @@ class _ChatTile extends StatelessWidget {
                               const SizedBox(width: 8),
                               Text(
                                 'Delete',
-                                style: TextStyle(
+                                style: theme.textTheme.bodyMedium?.copyWith(
                                   color: theme.colorScheme.error,
                                 ),
                               ),

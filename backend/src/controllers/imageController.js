@@ -4,7 +4,14 @@ import prisma from '../prisma.js';
 // Create single image record
 export const createImage = async (req, res) => {
     try {
-        const { publicId, url, originalName } = req.body;
+        const { publicId, url, originalName, size, format, width, height } = req.body;
+
+        // Validate required fields
+        if (!publicId || !url || !originalName) {
+            return res.status(400).json({
+                error: 'Missing required fields: publicId, url, originalName'
+            });
+        }
 
         // Check if an image with this publicId already exists
         const existingImage = await prisma.image.findUnique({
@@ -20,13 +27,20 @@ export const createImage = async (req, res) => {
 
         console.log(`Creating image record: ${originalName}, publicId: ${publicId}`);
 
+        // Prepare data object with required fields
+        const imageData = {
+            publicId,
+            url,
+            originalName,
+            size: size ? parseInt(size) : 0, // Default to 0 if not provided
+            format: format || 'unknown', // Default format if not provided
+            width: width ? parseInt(width) : 0, // Default to 0 if not provided
+            height: height ? parseInt(height) : 0, // Default to 0 if not provided
+        };
+
         // Save image info to database
         const imageRecord = await prisma.image.create({
-            data: {
-                publicId,
-                url,
-                originalName,
-            }
+            data: imageData
         });
 
         console.log(`Image record created successfully for: ${originalName}`);

@@ -110,7 +110,7 @@ export const validateObjectId = (req, res, next) => {
 };
 
 export const validateImageCreation = (req, res, next) => {
-    const { publicId, url, originalName } = req.body;
+    const { publicId, url, originalName, size, format, width, height } = req.body;
 
     if (!publicId || typeof publicId !== 'string') {
         return res.status(400).json({ error: 'Public ID is required and must be a string' });
@@ -134,6 +134,38 @@ export const validateImageCreation = (req, res, next) => {
 
     if (originalName.trim().length === 0) {
         return res.status(400).json({ error: 'Original name cannot be empty' });
+    }
+
+    // Optional fields validation
+    if (size !== undefined && size !== null) {
+        const sizeNum = typeof size === 'string' ? parseInt(size) : size;
+        if (isNaN(sizeNum) || sizeNum < 0) {
+            return res.status(400).json({ error: 'Size must be a non-negative number' });
+        }
+        req.body.size = sizeNum;
+    }
+
+    if (format !== undefined && format !== null) {
+        if (typeof format !== 'string' || format.trim().length === 0) {
+            return res.status(400).json({ error: 'Format must be a non-empty string' });
+        }
+        req.body.format = format.trim();
+    }
+
+    if (width !== undefined && width !== null) {
+        const widthNum = typeof width === 'string' ? parseInt(width) : width;
+        if (isNaN(widthNum) || widthNum < 0) {
+            return res.status(400).json({ error: 'Width must be a non-negative number' });
+        }
+        req.body.width = widthNum;
+    }
+
+    if (height !== undefined && height !== null) {
+        const heightNum = typeof height === 'string' ? parseInt(height) : height;
+        if (isNaN(heightNum) || heightNum < 0) {
+            return res.status(400).json({ error: 'Height must be a non-negative number' });
+        }
+        req.body.height = heightNum;
     }
 
     // Basic URL validation

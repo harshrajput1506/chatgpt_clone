@@ -33,6 +33,10 @@ model Image {
   publicId     String    @unique
   url          String
   originalName String
+  size         Int       // File size in bytes
+  format       String    // Image format (jpg, png, etc.)
+  width        Int       // Image width in pixels
+  height       Int       // Image height in pixels
   createdAt    DateTime  @default(now())
   messages     Message[]
 }

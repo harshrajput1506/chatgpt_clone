@@ -188,6 +188,13 @@ class _ChatPageState extends State<ChatPage> {
             return _buildEmptyState();
           }
 
+          if (!state.isNewChat && state.chat!.id.isNotEmpty) {
+            // add chat list
+            BlocProvider.of<ChatListBloc>(
+              context,
+            ).add(chat_list.AddChatEvent(state.chat!));
+          }
+
           // Auto-scroll to bottom when new messages arrive
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();

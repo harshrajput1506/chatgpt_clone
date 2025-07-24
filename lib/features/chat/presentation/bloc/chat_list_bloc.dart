@@ -187,7 +187,20 @@ class ChatListBloc extends Bloc<ChatListEvent, ChatListState> {
   void _onAddChat(AddChatEvent event, Emitter<ChatListState> emit) {
     if (state is! ChatListLoaded) return;
     final currentState = state as ChatListLoaded;
-
-    emit(currentState.copyWith(chats: [event.chat, ...currentState.chats]));
+    if (currentState.chats.any((chat) => chat.id == event.chat.id)) {
+      // If the chat already exists, we don't add it again
+      // but checks the chat title and updates it if necessary
+      final updatedChats =
+          currentState.chats.map((chat) {
+            if (chat.id == event.chat.id) {
+              return chat.copyWith(title: event.chat.title);
+            }
+            return chat;
+          }).toList();
+      emit(currentState.copyWith(chats: updatedChats));
+    } else {
+      // If it's a new chat, we add it to the top of the list
+      emit(currentState.copyWith(chats: [event.chat, ...currentState.chats]));
+    }
   }
 }

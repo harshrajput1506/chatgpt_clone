@@ -50,11 +50,12 @@ class GenerateChatTitleEvent extends CurrentChatEvent {
 
 class UpdateChatTitleEvent extends CurrentChatEvent {
   final String title;
+  final String chatId;
 
-  UpdateChatTitleEvent(this.title);
+  UpdateChatTitleEvent(this.title, this.chatId);
 
   @override
-  List<Object> get props => [title];
+  List<Object> get props => [title, chatId];
 }
 
 // States
@@ -257,6 +258,8 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     if (state is! CurrentChatLoaded) return;
     final currentState = state as CurrentChatLoaded;
     if (currentState.chat == null) return;
+
+    if (event.chatId != currentState.chat!.id) return;
 
     emit(
       currentState.copyWith(

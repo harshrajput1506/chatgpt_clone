@@ -417,9 +417,11 @@ class _ChatPageState extends State<ChatPage> {
                               ),
                             );
 
+                            // if current chat is same as updating chat,
+                            // update the title in current chat bloc as well
                             context.read<CurrentChatBloc>().add(
                               current_chat.UpdateChatTitleEvent(
-                                titleController.text,
+                                titleController.text, chatId
                               ),
                             );
 

@@ -23,15 +23,16 @@ class MessageBubble extends StatelessWidget {
       return OptionsMenu(
         menuController: controller,
         alignmentOffset: Offset(MediaQuery.of(context).size.width * 0.4, 0),
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
         menuItems: [
           MenuItemButton(
             leadingIcon: SvgPicture.asset(
               'assets/icons/copy.svg',
               width: 20,
               height: 20,
-              fit: BoxFit.fill,
+              fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurface,
+                theme.colorScheme.onSurfaceVariant,
                 BlendMode.srcIn,
               ),
             ),
@@ -43,6 +44,7 @@ class MessageBubble extends StatelessWidget {
               'Copy',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -52,9 +54,9 @@ class MessageBubble extends StatelessWidget {
               'assets/icons/file.svg',
               width: 20,
               height: 20,
-              fit: BoxFit.fill,
+              fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurface,
+                theme.colorScheme.onSurfaceVariant,
                 BlendMode.srcIn,
               ),
             ),
@@ -69,6 +71,7 @@ class MessageBubble extends StatelessWidget {
               'Select Text',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -142,15 +145,16 @@ class MessageBubble extends StatelessWidget {
             MediaQuery.of(context).size.width * 0.2,
             -MediaQuery.of(context).size.height * 0.4,
           ),
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
           menuItems: [
             MenuItemButton(
               leadingIcon: SvgPicture.asset(
                 'assets/icons/copy.svg',
                 width: 20,
                 height: 20,
-                fit: BoxFit.fill,
+                fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  theme.colorScheme.onSurface,
+                  theme.colorScheme.onSurfaceVariant,
                   BlendMode.srcIn,
                 ),
               ),
@@ -162,6 +166,7 @@ class MessageBubble extends StatelessWidget {
                 'Copy',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -171,9 +176,9 @@ class MessageBubble extends StatelessWidget {
                 'assets/icons/file.svg',
                 width: 20,
                 height: 20,
-                fit: BoxFit.fill,
+                fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  theme.colorScheme.onSurface,
+                  theme.colorScheme.onSurfaceVariant,
                   BlendMode.srcIn,
                 ),
               ),
@@ -192,6 +197,7 @@ class MessageBubble extends StatelessWidget {
                 'Select Text',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -201,9 +207,9 @@ class MessageBubble extends StatelessWidget {
                 'assets/icons/retry.svg',
                 width: 16,
                 height: 16,
-                fit: BoxFit.fill,
+                fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  theme.colorScheme.onSurface,
+                  theme.colorScheme.onSurfaceVariant,
                   BlendMode.srcIn,
                 ),
               ),
@@ -212,6 +218,7 @@ class MessageBubble extends StatelessWidget {
                 'Regenerate Response',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -240,7 +247,7 @@ class MessageBubble extends StatelessWidget {
                           margin: EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surfaceContainer,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           padding: const EdgeInsets.all(8),
                           child: Column(
@@ -256,6 +263,7 @@ class MessageBubble extends StatelessWidget {
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: theme.colorScheme.onSurface,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                     ),
                                   ),
@@ -269,21 +277,28 @@ class MessageBubble extends StatelessWidget {
                                     },
                                     label: Text(
                                       'Copy Code',
-                                      style: theme.textTheme.bodyMedium,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color:
+                                                theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                     ),
                                     icon: SvgPicture.asset(
                                       'assets/icons/clipboard.svg',
                                       width: 16,
                                       height: 16,
                                       colorFilter: ColorFilter.mode(
-                                        theme.colorScheme.onSurface,
+                                        theme.colorScheme.onSurfaceVariant,
                                         BlendMode.srcIn,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                               SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: ConstrainedBox(
@@ -299,6 +314,7 @@ class MessageBubble extends StatelessWidget {
                                       style: theme.textTheme.bodySmall
                                           ?.copyWith(
                                             color: theme.colorScheme.onSurface,
+                                            fontWeight: FontWeight.normal,
                                           ),
                                     ),
                                   ),

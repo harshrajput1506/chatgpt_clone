@@ -241,8 +241,8 @@ class AppTheme {
       surfaceContainerLowest: Color(0xff090f10),
       surfaceContainerLow: Color(0xff414141),
       surfaceContainer: Color(0xff2B2B2B),
-      surfaceContainerHigh: Color(0xff181818),
-      surfaceContainerHighest: Color(0xff1D1D1D),
+      surfaceContainerHigh: Color(0xff1D1D1D),
+      surfaceContainerHighest: Color(0xff181818),
     );
   }
 

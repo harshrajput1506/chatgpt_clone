@@ -11,6 +11,7 @@ import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.da
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart'
@@ -277,6 +278,7 @@ class _ChatPageState extends State<ChatPage> {
                   onSendImageMessage:
                       (content, model, image) =>
                           _sendImageMessage(content, model, image),
+                  onShowModalSheet: () => _showBottomSheet(),
                   enabled: !isDisabled,
                 );
               },
@@ -317,6 +319,97 @@ class _ChatPageState extends State<ChatPage> {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModelSelector({required VoidCallback onDismissSheet}) {
+    return BlocBuilder<ChatUICubit, ChatUIState>(
+      builder: (context, state) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Available Models',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.normal),
+            ),
+
+            const SizedBox(height: 8),
+
+            ...AppConstants.availableModels.asMap().entries.map((entry) {
+              final index = entry.key;
+              final model = entry.value;
+              final isSelected = index == state.selectedModelIndex;
+
+              return ListTile(
+                title: Text(
+                  model,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+                leading: Radio<int>(
+                  value: index,
+                  groupValue: state.selectedModelIndex,
+                  activeColor: Theme.of(context).colorScheme.onSurface,
+                  onChanged: (value) {
+                    context.read<ChatUICubit>().selectModel(value!);
+                    onDismissSheet();
+                  },
+                ),
+                onTap: () {
+                  context.read<ChatUICubit>().selectModel(index);
+                  onDismissSheet();
+                },
+                selected: isSelected,
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildImagePickerButton(
+    ImageSource source,
+    String label,
+    String iconPath,
+  ) {
+    return InkWell(
+      onTap: () {
+        context.read<ImageUploadBloc>().add(PickImageEvent(source: source));
+        Navigator.of(context).pop();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            SvgPicture.asset(
+              iconPath,
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                Theme.of(context).colorScheme.onSurfaceVariant,
+                BlendMode.srcIn,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -447,6 +540,53 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  void _showBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surfaceDim,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18.0, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildImagePickerButton(
+                    ImageSource.camera,
+                    'Camera',
+                    'assets/icons/camera.svg',
+                  ),
+                  const SizedBox(width: 8),
+                  _buildImagePickerButton(
+                    ImageSource.gallery,
+                    'Photos',
+                    'assets/icons/image.svg',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: Theme.of(context).colorScheme.outline),
+              const SizedBox(height: 16),
+              _buildModelSelector(
+                onDismissSheet: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showDeleteDialog(String chatId, int index) {
     showDialog(
       context: context,
@@ -570,22 +710,23 @@ class _AppBarWidget extends StatelessWidget {
                   child: Text(
                     chat?.title ?? '',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.normal,
+                      color: theme.colorScheme.outlineVariant,
                     ),
                     textAlign: TextAlign.start,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Divider(color: theme.colorScheme.onSurfaceVariant),
+                Divider(color: theme.colorScheme.outlineVariant.withAlpha(40)),
                 MenuItemButton(
                   leadingIcon: SvgPicture.asset(
                     'assets/icons/rename.svg',
                     width: 20,
                     height: 20,
-                    fit: BoxFit.fill,
+                    fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(
-                      theme.colorScheme.onSurface,
+                      theme.colorScheme.onSurfaceVariant,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -594,6 +735,7 @@ class _AppBarWidget extends StatelessWidget {
                     'Rename',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -602,7 +744,7 @@ class _AppBarWidget extends StatelessWidget {
                     'assets/icons/delete.svg',
                     width: 24,
                     height: 24,
-                    fit: BoxFit.fill,
+                    fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(
                       theme.colorScheme.error,
                       BlendMode.srcIn,

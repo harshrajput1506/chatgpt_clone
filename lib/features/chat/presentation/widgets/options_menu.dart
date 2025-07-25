@@ -5,12 +5,14 @@ class OptionsMenu extends StatelessWidget {
   final List<Widget> menuItems;
   final MenuController menuController;
   final Offset? alignmentOffset;
+  final Color? backgroundColor;
   const OptionsMenu({
     super.key,
     required this.child,
     this.menuItems = const [],
     required this.menuController,
     this.alignmentOffset,
+    this.backgroundColor,
   });
 
   @override
@@ -22,7 +24,7 @@ class OptionsMenu extends StatelessWidget {
       consumeOutsideTap: true,
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(
-          Theme.of(context).colorScheme.surfaceContainer,
+          backgroundColor ?? Theme.of(context).colorScheme.surfaceContainer,
         ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

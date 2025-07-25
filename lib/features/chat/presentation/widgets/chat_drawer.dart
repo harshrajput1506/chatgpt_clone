@@ -106,7 +106,7 @@ class ChatDrawer extends StatelessWidget {
                           ),
                         ),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest,
+                fillColor: theme.colorScheme.surfaceContainerHigh,
                 suffixIcon:
                     hasText
                         ? IconButton(

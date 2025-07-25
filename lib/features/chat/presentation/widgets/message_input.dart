@@ -5,7 +5,6 @@ import 'package:chatgpt_clone/features/chat/presentation/bloc/image_upload_bloc.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 class MessageInput extends StatelessWidget {
@@ -14,6 +13,7 @@ class MessageInput extends StatelessWidget {
   final Function(String, String) onSendMessage;
   final Function(String, String, ChatImage) onSendImageMessage;
   final Function(String) onTextChanged;
+  final VoidCallback onShowModalSheet;
   final bool enabled;
 
   const MessageInput({
@@ -24,25 +24,34 @@ class MessageInput extends StatelessWidget {
     required this.onSendImageMessage,
     required this.onTextChanged,
     this.enabled = true,
+    required this.onShowModalSheet,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-          ),
-        ),
-      ),
-      child: Column(
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _buildImagePreview(),
-          _buildModelSelector(),
-          _buildImagePickerOptions(),
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/gallery.svg',
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).colorScheme.onSurfaceVariant,
+                  BlendMode.srcIn,
+                ),
+              ),
+              onPressed: onShowModalSheet,
+            ),
+          ),
+          const SizedBox(width: 8),
           _buildInputRow(),
         ],
       ),
@@ -54,7 +63,7 @@ class MessageInput extends StatelessWidget {
       builder: (context, state) {
         if (state is ImageUploadSuccess) {
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.all(8),
             child: Stack(
               children: [
                 ClipRRect(
@@ -94,7 +103,7 @@ class MessageInput extends StatelessWidget {
 
         if (state is ImageUploadInProgress && state.localPath != null) {
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.all(8),
             child: Stack(
               children: [
                 ClipRRect(
@@ -129,234 +138,109 @@ class MessageInput extends StatelessWidget {
     );
   }
 
-  Widget _buildModelSelector() {
-    return BlocBuilder<ChatUICubit, ChatUIState>(
-      builder: (context, state) {
-        if (!state.showModelChange) return const SizedBox.shrink();
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: Column(
-            children:
-                AppConstants.availableModels.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final model = entry.value;
-                  final isSelected = index == state.selectedModelIndex;
-
-                  return ListTile(
-                    title: Text(model),
-                    leading: Radio<int>(
-                      value: index,
-                      groupValue: state.selectedModelIndex,
-                      onChanged: (value) {
-                        context.read<ChatUICubit>().selectModel(value!);
-                      },
-                    ),
-                    onTap: () {
-                      context.read<ChatUICubit>().selectModel(index);
-                    },
-                    selected: isSelected,
-                  );
-                }).toList(),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildImagePickerOptions() {
-    return BlocBuilder<ChatUICubit, ChatUIState>(
-      builder: (context, state) {
-        if (!state.showImagePickerOptions) return const SizedBox.shrink();
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildImagePickerButton(
-                context,
-                'Camera',
-                'assets/icons/camera.svg',
-                ImageSource.camera,
-              ),
-              _buildImagePickerButton(
-                context,
-                'Gallery',
-                'assets/icons/gallery.svg',
-                ImageSource.gallery,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildImagePickerButton(
-    BuildContext context,
-    String label,
-    String iconPath,
-    ImageSource source,
-  ) {
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: () {
-        context.read<ImageUploadBloc>().add(PickImageEvent(source: source));
-        context.read<ChatUICubit>().hideAllMenus();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: theme.colorScheme.outline),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            SvgPicture.asset(
-              iconPath,
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurface,
-                BlendMode.srcIn,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(label, style: theme.textTheme.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildInputRow() {
     return BlocBuilder<ChatUICubit, ChatUIState>(
       builder: (context, uiState) {
         return BlocBuilder<ImageUploadBloc, ImageUploadState>(
           builder: (context, uploadState) {
             final theme = Theme.of(context);
-            final hasText = controller.text.trim().isNotEmpty;
+            final hasInput = controller.text.trim().isNotEmpty;
             final selectedModel =
                 AppConstants.availableModels[uiState.selectedModelIndex];
             final isUploading = uploadState is ImageUploadInProgress;
+            final isDisabled = !enabled || isUploading;
 
-            return Row(
-              children: [
-                // Model change button
-                IconButton(
-                  onPressed:
-                      enabled && !isUploading
-                          ? () =>
-                              context.read<ChatUICubit>().toggleModelChange()
-                          : null,
-                  icon: SvgPicture.asset(
-                    'assets/icons/model-control.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      uiState.showModelChange
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                      BlendMode.srcIn,
-                    ),
-                  ),
+            return Expanded(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: 320, // Limit max height to ~5-6 lines
                 ),
-
-                // Image picker button
-                IconButton(
-                  onPressed:
-                      enabled && !isUploading
-                          ? () =>
-                              context
-                                  .read<ChatUICubit>()
-                                  .toggleImagePickerOptions()
-                          : null,
-                  icon: SvgPicture.asset(
-                    'assets/icons/image.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      uiState.showImagePickerOptions
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                      BlendMode.srcIn,
-                    ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildImagePreview(),
 
-                // Text field
-                Expanded(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxHeight: 240, // Limit max height to ~5-6 lines
-                    ),
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      enabled: enabled && !isUploading,
-                      onChanged: (value) {
-                        onTextChanged(value);
-                        // Hide menus when typing
-                        if (value.isNotEmpty) {
-                          context.read<ChatUICubit>().hideAllMenus();
-                        }
-                      },
-                      maxLines: null,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
+                      TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        enabled: enabled,
+                        onChanged: (value) {
+                          onTextChanged(value);
+                        },
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface,
                         ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surfaceContainer,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: 'Ask anything',
+                          hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.normal,
+                          ),
+                          filled: false,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          suffixIcon:
+                              hasInput
+                                  ? InkWell(
+                                    onTap:
+                                        !isDisabled
+                                            ? () {
+                                              _handleSend(
+                                                context,
+                                                selectedModel,
+                                                uploadState,
+                                              );
+                                              controller.clear();
+                                            }
+                                            : null,
+                                    child: Container(
+                                      margin: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.onSurface,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4.0),
+                                        child: SvgPicture.asset(
+                                          'assets/icons/up-arrow.svg',
+                                          colorFilter: ColorFilter.mode(
+                                            isDisabled
+                                                ? theme
+                                                    .colorScheme
+                                                    .outlineVariant
+                                                : theme.colorScheme.surface,
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  : IconButton(
+                                    icon: SvgPicture.asset(
+                                      'assets/icons/model-control.svg',
+                                      colorFilter: ColorFilter.mode(
+                                        theme.colorScheme.onSurfaceVariant,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                    onPressed: onShowModalSheet,
+                                  ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(width: 8),
-
-                // Send button
-                IconButton(
-                  onPressed:
-                      (enabled && !isUploading && hasText) ||
-                              (uploadState is ImageUploadSuccess)
-                          ? () =>
-                              _handleSend(context, selectedModel, uploadState)
-                          : null,
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color:
-                          ((enabled && !isUploading && hasText) ||
-                                  (uploadState is ImageUploadSuccess))
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/icons/up-arrow.svg',
-                      width: 16,
-                      height: 16,
-                      colorFilter: ColorFilter.mode(
-                        ((enabled && !isUploading && hasText) ||
-                                (uploadState is ImageUploadSuccess))
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurfaceVariant,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             );
           },
         );

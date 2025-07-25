@@ -58,7 +58,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      drawerScrimColor: Theme.of(context).colorScheme.scrim,
+      drawerScrimColor: Theme.of(context).colorScheme.onSurface.withAlpha(100),
       drawer: _buildDrawer(),
       body: SafeArea(
         child: Column(
@@ -421,7 +421,8 @@ class _ChatPageState extends State<ChatPage> {
                             // update the title in current chat bloc as well
                             context.read<CurrentChatBloc>().add(
                               current_chat.UpdateChatTitleEvent(
-                                titleController.text, chatId
+                                titleController.text,
+                                chatId,
                               ),
                             );
 

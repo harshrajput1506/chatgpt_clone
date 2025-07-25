@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/config/routes.dart';
+import 'package:chatgpt_clone/core/theme/app_theme.dart';
 
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/current_chat_bloc.dart';
@@ -6,7 +7,6 @@ import 'package:chatgpt_clone/features/chat/presentation/bloc/image_upload_bloc.
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_ui_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/theme/app_theme.dart';
 import 'config/injector.dart' as sl;
 
 void main() async {
@@ -32,8 +32,8 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp.router(
         title: 'ChatGPT Clone',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
+        theme: AppTheme.theme(AppTheme.lightScheme()),
+        darkTheme: AppTheme.theme(AppTheme.darkScheme()),
         themeMode: ThemeMode.system,
         routerConfig: AppRouter.router,
         debugShowCheckedModeBanner: false,

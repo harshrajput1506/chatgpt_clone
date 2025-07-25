@@ -43,7 +43,7 @@ cp .env.example .env
 npx prisma migrate dev
 
 # Start the server
-npm run dev
+npm run dev                         
 ```
 
 ---

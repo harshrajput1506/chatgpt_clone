@@ -2,7 +2,6 @@ import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:go_router/go_router.dart';
 
 class ChatDrawer extends StatelessWidget {
   final TextEditingController controller;
@@ -39,331 +38,236 @@ class ChatDrawer extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      width: MediaQuery.of(context).size.width * 0.8,
-      decoration: BoxDecoration(color: theme.colorScheme.surface),
+      width:
+          focusNode.hasFocus
+              ? MediaQuery.of(context).size.width
+              : MediaQuery.of(context).size.width * 0.8,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceDim,
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withAlpha(40),
+            blurRadius: 8,
+            offset: Offset(4, 2),
+          ),
+        ],
+      ),
       child: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context, theme),
             _buildSearchField(theme),
-            _buildNewChatButton(theme),
-            _buildChatsList(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [_buildNewChatButton(theme), _buildChatsList()],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, ThemeData theme) {
+  Widget _buildSearchField(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12),
       child: Row(
         children: [
-          Text(
-            'Conversations',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: onValueChange,
+              decoration: InputDecoration(
+                hintText: 'Search',
+                hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                prefixIcon:
+                    focusNode.hasFocus
+                        ? IconButton(
+                          onPressed: () => focusNode.unfocus(),
+                          icon: Icon(
+                            Icons.arrow_back_rounded,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                        : IconButton(
+                          onPressed: () => focusNode.requestFocus(),
+
+                          icon: SvgPicture.asset(
+                            'assets/icons/search.svg',
+                            colorFilter: ColorFilter.mode(
+                              theme.colorScheme.onSurfaceVariant,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest,
+                suffixIcon:
+                    hasText
+                        ? IconButton(
+                          onPressed: onClear,
+                          icon: Icon(
+                            Icons.clear,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                        : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(32),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
           ),
-          const Spacer(),
-          IconButton(
-            onPressed: () => context.pop(),
-            icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
-          ),
+
+          if (!hasText) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/edit.svg',
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  theme.colorScheme.onSurface,
+                  BlendMode.srcIn,
+                ),
+              ),
+              onPressed: onNewChat,
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSearchField(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onValueChange,
-        decoration: InputDecoration(
-          hintText: 'Search conversations',
-          prefixIcon: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: SvgPicture.asset(
-              'assets/icons/search.svg',
-              width: 20,
-              height: 20,
-              colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurfaceVariant,
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
-          suffixIcon:
-              hasText
-                  ? IconButton(
-                    onPressed: onClear,
-                    icon: Icon(
-                      Icons.clear,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                  : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildNewChatButton(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: onNewChat,
-          icon: SvgPicture.asset(
+    return Column(
+      children: [
+        ListTile(
+          leading: SvgPicture.asset(
             'assets/icons/edit.svg',
-            width: 20,
-            height: 20,
+            width: 24,
+            height: 24,
             colorFilter: ColorFilter.mode(
-              theme.colorScheme.onSurface,
+              theme.colorScheme.onSurfaceVariant,
               BlendMode.srcIn,
             ),
           ),
-          label: Text(
+          title: Text(
             'New Chat',
-            style: TextStyle(color: theme.colorScheme.onSurface),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.normal,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          onTap: onNewChat,
+        ),
+
+        ListTile(
+          leading: SvgPicture.asset(
+            'assets/icons/chats.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.onSurfaceVariant,
+              BlendMode.srcIn,
+            ),
+          ),
+          title: Text(
+            'Chats',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.normal,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildChatsList() {
-    return Expanded(
-      child: BlocBuilder<ChatListBloc, ChatListState>(
-        builder: (context, state) {
-          if (state is ChatListLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return BlocBuilder<ChatListBloc, ChatListState>(
+      builder: (context, state) {
+        if (state is ChatListLoading) {
+          return Center(
+            child: CircularProgressIndicator(
+              color:
+                  Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant, // Use the appropriate color
+            ),
+          );
+        }
 
-          if (state is ChatListError) {
+        if (state is ChatListError) {
+          return Center(
+            child: Text(
+              'Something went wrong',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          );
+        }
+
+        if (state is ChatListLoaded) {
+          final chats = state.displayChats;
+
+          if (chats.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading chats',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.message,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<ChatListBloc>().add(LoadChatsEvent());
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
+              child: Text(
+                'No chats found',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             );
           }
 
-          if (state is ChatListLoaded) {
-            final chats = state.displayChats;
+          return ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index];
+              final originalIndex = state.chats.indexOf(chat);
+              final isSelected = selectedChatIndex == originalIndex;
+              final isUpdating =
+                  updatingChatIndex == originalIndex ||
+                  deletetingChatIndex == originalIndex;
 
-            if (chats.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+              return Container(
+                decoration: BoxDecoration(
+                  color:
+                      isSelected ? Theme.of(context).colorScheme.outline : null,
+                ),
+                child: ListTile(
+                  title: Text(
+                    chat.title,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.normal,
+                      color:
+                          isUpdating
+                              ? Theme.of(context).colorScheme.outlineVariant
+                              : Theme.of(context).colorScheme.onSurface,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      state.isSearching
-                          ? 'No chats found'
-                          : 'No conversations yet',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.isSearching
-                          ? 'Try searching with different keywords'
-                          : 'Start a new conversation to get started',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => onChatTap(originalIndex, chat.id),
                 ),
               );
-            }
+            },
+          );
+        }
 
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: chats.length,
-              itemBuilder: (context, index) {
-                final chat = chats[index];
-                final originalIndex = state.chats.indexOf(chat);
-                final isSelected = selectedChatIndex == originalIndex;
-                final isUpdating =
-                    updatingChatIndex == originalIndex ||
-                    deletetingChatIndex == originalIndex;
-
-                return _ChatTile(
-                  title: chat.title,
-                  isSelected: isSelected,
-                  isUpdating: isUpdating,
-                  onTap: () => onChatTap(originalIndex, chat.id),
-                  onRename:
-                      () => onRenameChat(chat.id, originalIndex, chat.title),
-                  onDelete: () => onDeleteChat(chat.id, originalIndex),
-                );
-              },
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
-      ),
-    );
-  }
-}
-
-class _ChatTile extends StatelessWidget {
-  final String title;
-  final bool isSelected;
-  final bool isUpdating;
-  final VoidCallback onTap;
-  final VoidCallback onRename;
-  final VoidCallback onDelete;
-
-  const _ChatTile({
-    required this.title,
-    required this.isSelected,
-    required this.isUpdating,
-    required this.onTap,
-    required this.onRename,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      color: isSelected ? theme.colorScheme.primary.withOpacity(0.3) : null,
-      child: ListTile(
-        title: Text(
-          title,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color:
-                isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        onTap: isUpdating ? null : onTap,
-        trailing:
-            isUpdating
-                ? SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      theme.colorScheme.primary,
-                    ),
-                  ),
-                )
-                : PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    size: 16,
-                  ),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'rename':
-                        onRename();
-                        break;
-                      case 'delete':
-                        onDelete();
-                        break;
-                    }
-                  },
-                  itemBuilder:
-                      (context) => [
-                        PopupMenuItem(
-                          value: 'rename',
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                'assets/icons/rename.svg',
-                                width: 16,
-                                height: 16,
-                                colorFilter: ColorFilter.mode(
-                                  theme.colorScheme.onSurface,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text('Rename', style: theme.textTheme.bodyMedium),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                'assets/icons/delete.svg',
-                                width: 20,
-                                height: 20,
-                                colorFilter: ColorFilter.mode(
-                                  theme.colorScheme.error,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Delete',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.error,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                ),
-      ),
+        return const SizedBox.shrink();
+      },
     );
   }
 }

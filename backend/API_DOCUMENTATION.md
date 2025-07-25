@@ -469,6 +469,13 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
+### MongoDB Setup
+1. Install MongoDB locally or use MongoDB Atlas (cloud)
+2. For local installation: [MongoDB Installation Guide](https://docs.mongodb.com/manual/installation/)
+3. For MongoDB Atlas: [Get started with Atlas](https://docs.atlas.mongodb.com/getting-started/)
+4. Update `DATABASE_URL` with your MongoDB connection string
+5. **Important**: Ensure your MongoDB instance is running before starting the backend
+
 ### OpenAI Setup
 1. Sign up at [OpenAI](https://platform.openai.com/)
 2. Go to API Keys section and create a new API key

@@ -98,17 +98,16 @@ npm run dev
 |-----------------|-------------------------|--------------------------------|
 | **Runtime**     | Node.js                | JavaScript runtime             |
 | **Framework**   | Express.js             | Web application framework      |
-| **Database**    | PostgreSQL + Prisma   | Database with ORM              |
+| **Database**    | MongoDB + Prisma      | NoSQL database with ORM        |
 | **AI API**      | OpenAI GPT Models      | Chat completion API            |
 | **Media**       | Cloudinary             | Image upload and management    |
-| **Auth**        | JWT (Ready)            | Authentication system          |
 
 ### Development
 | Tool            | Purpose                | Status                         |
 |-----------------|------------------------|--------------------------------|
 | **Dependencies**| get_it                 | ✅ Dependency injection       |
 | **Utils**       | uuid, logger           | ✅ Utilities and logging      |
-| **File Handling**| file_picker, image_picker | ✅ Media file selection    |
+| **Media**       | image_picker           | ✅ Image selection from camera/gallery |
 | **Permissions**| permission_handler     | ✅ Device permissions         |
 
 ---
@@ -184,7 +183,7 @@ backend/
 - Flutter SDK 3.7.2 or higher
 - Dart SDK 3.0 or higher
 - Node.js 18+ and npm
-- PostgreSQL database
+- MongoDB database (local or Atlas)
 - OpenAI API key
 - Cloudinary account (for image uploads)
 
@@ -202,8 +201,10 @@ cp .env.example .env
 
 Edit `.env` file with your configuration:
 ```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/chatgpt_clone"
+# Database (MongoDB)
+DATABASE_URL="mongodb://localhost:27017/chatgpt_clone"
+# For MongoDB Atlas (cloud): 
+# DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/chatgpt_clone"
 
 # OpenAI API
 OPENAI_API_KEY="your_openai_api_key_here"
@@ -219,8 +220,8 @@ NODE_ENV=development
 ```
 
 ```bash
-# Run database migrations
-npx prisma migrate dev
+# Generate Prisma client for MongoDB
+npx prisma generate
 
 # Start the development server
 npm run dev
@@ -336,27 +337,7 @@ For complete API documentation, see [`backend/API_DOCUMENTATION.md`](backend/API
 
 ---
 
-## 📚 Documentation
-
-- 📖 **[Development Guide](DEVELOPMENT_GUIDE.md)** - Complete setup and architecture guide
-- 🔌 **[Backend API](backend/API_DOCUMENTATION.md)** - Comprehensive API documentation
-- 🎯 **[Business Objectives](BO.md)** - Project goals and requirements  
-- 📋 **[MBO Guide](MBO.md)** - Management by objectives framework
-
-## 🧪 Testing
-
-```bash
-# Run Flutter tests
-flutter test
-
-# Run backend tests (when available)
-cd backend && npm test
-
-# Run integration tests
-flutter test integration_test/
-```
-
-## 🚀 Deployment
+##  Deployment
 
 ### Frontend (Flutter)
 ```bash
@@ -430,7 +411,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 - 🐛 **Issues**: [GitHub Issues](https://github.com/harshrajput1506/chatgpt_clone/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/harshrajput1506/chatgpt_clone/discussions)  
-- 📧 **Contact**: [harshrajput1506@gmail.com](mailto:harshrajput1506@gmail.com)
+- 📧 **Contact**: [harshrajput2906@gmail.com](mailto:harshrajput2906@gmail.com)
 - 🌟 **Star the repo**: If this project helped you!
 
 ## 🎉 Acknowledgments

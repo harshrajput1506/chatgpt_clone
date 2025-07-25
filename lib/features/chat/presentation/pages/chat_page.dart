@@ -711,14 +711,14 @@ class _AppBarWidget extends StatelessWidget {
                     chat?.title ?? '',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.normal,
-                      color: theme.colorScheme.outlineVariant,
+                      color: theme.colorScheme.onSurfaceVariant.withAlpha(150),
                     ),
                     textAlign: TextAlign.start,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Divider(color: theme.colorScheme.outlineVariant.withAlpha(40)),
+                Divider(color: theme.colorScheme.outlineVariant.withAlpha(100)),
                 MenuItemButton(
                   leadingIcon: SvgPicture.asset(
                     'assets/icons/rename.svg',

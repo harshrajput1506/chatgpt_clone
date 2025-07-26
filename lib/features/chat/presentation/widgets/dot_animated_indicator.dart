@@ -23,7 +23,7 @@ class _DotAnimatedIndicatorState extends State<DotAnimatedIndicator>
 
     _radiusAnimation = Tween<double>(
       begin: 4,
-      end: 8,
+      end: 6,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 

@@ -510,13 +510,6 @@ export const regenerateStreamResponse = async (req, res) => {
             return;
         }
 
-        // Build context for OpenAI
-        const context = {
-            messages: messages,
-            truncated: false,
-            hasContextSummary: false,
-            estimatedTokens: messages.length * 50 // Rough estimate
-        };
 
         // Format messages for the specified model
         const formattedMessages = formatMessageForOpenAI(context);

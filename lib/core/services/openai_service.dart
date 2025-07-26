@@ -101,6 +101,10 @@ class OpenAIService {
             'Accept': 'text/event-stream',
             'Content-Type': 'application/json',
           },
+          validateStatus: (status) {
+            // Allow all status codes so we can handle errors in the stream
+            return status != null && status < 500;
+          },
         ),
       );
 
@@ -108,6 +112,15 @@ class OpenAIService {
         _logger.e('No response data received from stream endpoint');
         _responseStreamController?.addError(
           ServerFailure('No response data received'),
+        );
+        return;
+      }
+
+      // Check if response status indicates an error
+      if (response.statusCode != 200) {
+        _logger.e('HTTP error ${response.statusCode} in stream');
+        _responseStreamController?.addError(
+          ServerFailure('HTTP ${response.statusCode}: Request failed'),
         );
         return;
       }
@@ -132,6 +145,16 @@ class OpenAIService {
 
                 try {
                   final jsonData = json.decode(raw);
+
+                  // Check for error in the stream data
+                  if (jsonData['error'] != null) {
+                    _logger.e('Server error in stream: ${jsonData['error']}');
+                    _responseStreamController?.addError(
+                      ServerFailure(jsonData['error']),
+                    );
+                    return;
+                  }
+
                   final type = jsonData['type'];
 
                   if (type == 'chunk') {
@@ -173,8 +196,29 @@ class OpenAIService {
           );
     } on DioException catch (e) {
       _logger.e('Network error in stream: ${e.message}');
+      _logger.e('Response status: ${e.response?.statusCode}');
+      _logger.e('Response data: ${e.response?.data}');
 
-      if (e.type == DioExceptionType.connectionTimeout ||
+      String errorMessage = 'Network error';
+
+      if (e.response?.statusCode == 400) {
+        // Try to extract error message from response
+        try {
+          final errorData = e.response?.data;
+          if (errorData is Map) {
+            errorMessage =
+                errorData['error'] ?? errorData['details'] ?? 'Bad request';
+          } else if (errorData is String) {
+            errorMessage = errorData;
+          } else {
+            errorMessage = 'Bad request - please check your input';
+          }
+        } catch (_) {
+          errorMessage = 'Bad request - please check your input';
+        }
+        _responseStreamController?.addError(ServerFailure(errorMessage));
+        throw ServerFailure(errorMessage);
+      } else if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         _responseStreamController?.addError(
           NetworkFailure('Connection timeout'),
@@ -190,7 +234,7 @@ class OpenAIService {
         throw ServerFailure('Rate limit exceeded');
       } else {
         _responseStreamController?.addError(ServerFailure('Network error'));
-        throw ServerFailure('Network error: ${e.message}');
+        throw ServerFailure('Network error');
       }
     } on ServerFailure catch (e) {
       _logger.e('Server failure error: $e');
@@ -198,10 +242,8 @@ class OpenAIService {
       rethrow;
     } catch (e) {
       _logger.e('Unexpected error: $e');
-      _responseStreamController?.addError(
-        ServerFailure('Unexpected error: $e'),
-      );
-      throw ServerFailure('Unexpected error: $e');
+      _responseStreamController?.addError(ServerFailure('Unexpected error'));
+      throw ServerFailure('Unexpected error');
     }
   }
 
@@ -217,13 +259,17 @@ class OpenAIService {
           StreamController<Map<String, dynamic>>.broadcast();
 
       final response = await _dio.post<ResponseBody>(
-        '$baseUrl/ai/chats/$chatId/messages/$messageId/regenerate',
+        '$baseUrl/ai/chats/$chatId/messages/$messageId/regenerate-stream',
         data: {'model': model},
         options: Options(
           responseType: ResponseType.stream,
           headers: {
             'Accept': 'text/event-stream',
             'Content-Type': 'application/json',
+          },
+          validateStatus: (status) {
+            // Allow all status codes so we can handle errors in the stream
+            return status != null && status < 500;
           },
         ),
       );
@@ -232,6 +278,17 @@ class OpenAIService {
         _logger.e('No response data received from stream endpoint');
         _responseStreamController?.addError(
           ServerFailure('No response data received'),
+        );
+        return;
+      }
+
+      // Check if response status indicates an error
+      if (response.statusCode != 200) {
+        _logger.e(
+          'HTTP error ${response.statusCode} in regenerate stream - ${response.data}',
+        );
+        _responseStreamController?.addError(
+          ServerFailure('HTTP ${response.statusCode}: Request failed'),
         );
         return;
       }
@@ -256,6 +313,16 @@ class OpenAIService {
 
                 try {
                   final jsonData = json.decode(raw);
+
+                  // Check for error in the stream data
+                  if (jsonData['error'] != null) {
+                    _logger.e('Server error in stream: ${jsonData['error']}');
+                    _responseStreamController?.addError(
+                      ServerFailure(jsonData['error']),
+                    );
+                    return;
+                  }
+
                   final type = jsonData['type'];
 
                   if (type == 'chunk') {
@@ -263,16 +330,21 @@ class OpenAIService {
                     _responseStreamController?.add({
                       'type': 'chunk',
                       'content': content,
+                      'regenerated': jsonData['regenerated'] ?? true,
                     });
-                    _logger.d('Chunk received: $content');
+                    _logger.d('Regenerate chunk received: $content');
                   } else if (type == 'complete') {
                     final fullContent = jsonData['fullContent'];
                     _responseStreamController?.add({
                       'type': 'complete',
                       'content': fullContent,
                       'messageId': jsonData['messageId'],
+                      'regenerated': jsonData['regenerated'] ?? true,
+                      'chat': jsonData['chat'],
                     });
-                    _logger.i('Stream completed with content: $fullContent');
+                    _logger.i(
+                      'Regenerate stream completed with content: $fullContent',
+                    );
                   }
                 } catch (e) {
                   _logger.e('Error parsing JSON: $e');
@@ -283,22 +355,43 @@ class OpenAIService {
               }
             },
             onDone: () {
-              _logger.i("Stream done.");
+              _logger.i("Regenerate stream done.");
               _closeExistingStream();
             },
             onError: (e) {
-              _logger.e('Stream error: $e');
+              _logger.e('Regenerate stream error: $e');
               _responseStreamController?.addError(
-                ServerFailure('Stream error: $e'),
+                ServerFailure('Stream error'),
               );
               _closeExistingStream();
             },
             cancelOnError: false,
           );
     } on DioException catch (e) {
-      _logger.e('Network error in stream: ${e.message}');
+      _logger.e('Network error in regenerate stream: ${e.message}');
+      _logger.e('Response status: ${e.response?.statusCode}');
+      _logger.e('Response data: ${e.response?.data}');
 
-      if (e.type == DioExceptionType.connectionTimeout ||
+      String errorMessage = 'Network error';
+
+      if (e.response?.statusCode == 400) {
+        // Try to extract error message from response
+        try {
+          final errorData = e.response?.data;
+          if (errorData is Map) {
+            errorMessage =
+                errorData['error'] ?? errorData['details'] ?? 'Bad request';
+          } else if (errorData is String) {
+            errorMessage = errorData;
+          } else {
+            errorMessage = 'Bad request - please check your input';
+          }
+        } catch (_) {
+          errorMessage = 'Bad request - please check your input';
+        }
+        _responseStreamController?.addError(ServerFailure(errorMessage));
+        throw ServerFailure(errorMessage);
+      } else if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         _responseStreamController?.addError(
           NetworkFailure('Connection timeout'),
@@ -314,7 +407,7 @@ class OpenAIService {
         throw ServerFailure('Rate limit exceeded');
       } else {
         _responseStreamController?.addError(ServerFailure('Network error'));
-        throw ServerFailure('Network error: ${e.message}');
+        throw ServerFailure('Network error');
       }
     } on ServerFailure catch (e) {
       _logger.e('Server failure error: $e');
@@ -322,10 +415,8 @@ class OpenAIService {
       rethrow;
     } catch (e) {
       _logger.e('Unexpected error: $e');
-      _responseStreamController?.addError(
-        ServerFailure('Unexpected error: $e'),
-      );
-      throw ServerFailure('Unexpected error: $e');
+      _responseStreamController?.addError(ServerFailure('Unexpected error'));
+      throw ServerFailure('Unexpected error');
     }
   }
 

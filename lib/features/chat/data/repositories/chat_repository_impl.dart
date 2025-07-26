@@ -190,12 +190,12 @@ class ChatRepositoryImpl implements ChatRepository {
         'webp',
         'bmp',
       ].contains(imagePath.split('.').last.toLowerCase())) {
-        return Left(ServerFailure('Invalid image type'));
+        return Left(ImageUnsupportedFailure('Invalid image type'));
       }
 
       // check file size not more than 5MB
       if (file.lengthSync() > 5 * 1024 * 1024) {
-        return Left(ServerFailure('Image size should not exceed 5MB'));
+        return Left(ImageUnsupportedFailure('Image size should not exceed 5MB'));
       }
 
       // Upload the image on the cloudinary
@@ -212,7 +212,7 @@ class ChatRepositoryImpl implements ChatRepository {
       return Right(image);
     } catch (e) {
       _logger.e('Failed to upload image: $e');
-      return Left(ServerFailure('Failed to upload image'));
+      return Left(ImageUploadFailure('Failed to upload image'));
     }
   }
 

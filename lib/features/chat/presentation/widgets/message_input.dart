@@ -59,6 +59,7 @@ class MessageInput extends StatelessWidget {
   }
 
   Widget _buildImagePreview() {
+    final size = 120.0;
     return BlocBuilder<ImageUploadBloc, ImageUploadState>(
       builder: (context, state) {
         if (state is ImageUploadSuccess) {
@@ -70,8 +71,8 @@ class MessageInput extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   child: Image.file(
                     File(state.localPath),
-                    height: 120,
-                    width: 120,
+                    height: size,
+                    width: size,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -110,8 +111,8 @@ class MessageInput extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: Image.file(
                     File(state.localPath!),
-                    height: 100,
-                    width: 100,
+                    height: size,
+                    width: size,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -129,6 +130,23 @@ class MessageInput extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          );
+        }
+
+        // state is uploading error
+        if (state is ImageUploadError && state.type == 'upload') {
+          return Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            ),
+            child: Text(
+              'Cannot Upload Image',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
           );
         }

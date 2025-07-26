@@ -1,3 +1,4 @@
+import 'package:chatgpt_clone/core/utils/failures.dart';
 import 'package:chatgpt_clone/core/utils/permission_helper.dart';
 import 'package:chatgpt_clone/core/utils/error_messages.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
@@ -52,8 +53,9 @@ class ImageUploadSuccess extends ImageUploadState {
 
 class ImageUploadError extends ImageUploadState {
   final String message;
+  final String type;
 
-  ImageUploadError(this.message);
+  ImageUploadError(this.message, {this.type = 'general'});
 
   @override
   List<Object> get props => [message];
@@ -94,7 +96,7 @@ class ImageUploadBloc extends Bloc<ImageUploadEvent, ImageUploadState> {
     final result = await chatRepository.uploadImage(imagePath: pickedFile.path);
     result.fold(
       (failure) => emit(
-        ImageUploadError(ErrorMessages.getUserFriendlyMessage(failure.message)),
+        ImageUploadError(ErrorMessages.getUserFriendlyMessage(failure.message), type: failure is ImageUploadFailure ? 'upload' : 'general'),
       ),
       (chatImage) => emit(
         ImageUploadSuccess(image: chatImage, localPath: pickedFile.path),

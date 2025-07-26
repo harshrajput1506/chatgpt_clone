@@ -19,3 +19,11 @@ class CacheFailure extends Failure {
 class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
+
+class ImageUploadFailure extends Failure {
+  const ImageUploadFailure(super.message);
+}
+
+class ImageUnsupportedFailure extends Failure {
+  const ImageUnsupportedFailure(super.message);
+}

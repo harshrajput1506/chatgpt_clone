@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:chatgpt_clone/core/utils/failures.dart';
+import 'package:chatgpt_clone/core/utils/error_messages.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/message.dart';
 import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:logger/web.dart';
 
 // Events
 abstract class CurrentChatEvent extends Equatable {}
@@ -61,6 +61,11 @@ class UpdateChatTitleEvent extends CurrentChatEvent {
   List<Object> get props => [title, chatId];
 }
 
+class ClearErrorEvent extends CurrentChatEvent {
+  @override
+  List<Object> get props => [];
+}
+
 // Internal events
 class _RecievedChunksEvent extends CurrentChatEvent {
   final String content;
@@ -108,31 +113,37 @@ class CurrentChatLoaded extends CurrentChatState {
   final Chat? chat;
   final bool isResponding;
   final bool isRegenerating;
+  final String? errorMessage; // Add error message to preserve chat state
 
   CurrentChatLoaded({
     this.chat,
     this.isResponding = false,
     this.isRegenerating = false,
+    this.errorMessage,
   });
 
   CurrentChatLoaded copyWith({
     Chat? chat,
     bool? isResponding,
     bool? isRegenerating,
+    String? errorMessage,
     bool clearChat = false,
+    bool clearError = false,
   }) {
     return CurrentChatLoaded(
       chat: clearChat ? null : (chat ?? this.chat),
       isResponding: isResponding ?? this.isResponding,
       isRegenerating: isRegenerating ?? this.isRegenerating,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   bool get isNewChat => chat == null || chat!.id.isEmpty;
+  bool get hasError => errorMessage != null;
   List<Message> get messages => chat?.messages ?? [];
 
   @override
-  List<Object?> get props => [chat, isResponding, isRegenerating];
+  List<Object?> get props => [chat, isResponding, isRegenerating, errorMessage];
 }
 
 class CurrentChatError extends CurrentChatState {
@@ -147,7 +158,6 @@ class CurrentChatError extends CurrentChatState {
 // BLoC
 class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
   final ChatRepository chatRepository;
-  final Logger _logger = Logger(printer: PrettyPrinter());
   StreamSubscription<Map<String, dynamic>>? _streamSubscription;
 
   CurrentChatBloc({required this.chatRepository})
@@ -158,6 +168,7 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     on<StartNewChatEvent>(_onStartNewChat);
     on<GenerateChatTitleEvent>(_onGenerateChatTitle);
     on<UpdateChatTitleEvent>(_onUpdateChatTitle);
+    on<ClearErrorEvent>(_onClearError);
 
     // Internal events
     on<_RecievedChunksEvent>(_onRecievedChunks);
@@ -175,7 +186,11 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     emit(CurrentChatLoading());
     final result = await chatRepository.getChatHistory(chatId: event.chatId);
     result.fold(
-      (failure) => emit(CurrentChatError(failure.message)),
+      (failure) => emit(
+        CurrentChatLoaded(
+          errorMessage: ErrorMessages.getUserFriendlyMessage(failure.message),
+        ),
+      ),
       (chat) => emit(CurrentChatLoaded(chat: chat)),
     );
   }
@@ -189,17 +204,13 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     // Cancel existing subscription if any
     _streamSubscription?.cancel();
 
-    _logger.i('Initializing stream listener for CurrentChatBloc');
-
     _streamSubscription = chatRepository.responseStream.listen(
       (response) {
-        _logger.i('Received stream response: $response');
         if (state is CurrentChatLoaded) {
           final type = response['type'] as String;
           // chunks
           if (type == 'chunk') {
             final content = response['content'] as String;
-            _logger.i('Processing chunk: $content');
             add(_RecievedChunksEvent(content));
           }
 
@@ -207,25 +218,26 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
           if (type == 'complete') {
             final content = response['content'] as String;
             final messageId = response['messageId'] as String;
-            _logger.i(
-              'Processing complete response with messageId: $messageId',
-            );
             add(_CompleteResponseEvent(content, messageId, isNewChat));
           }
         }
       },
       onError: (error) {
-        _logger.e('Stream error: $error');
         if (state is CurrentChatLoaded) {
+          String userFriendlyMessage;
+
           if (error is Failure) {
-            add(_ErrorResponseEvent(error.message));
+            userFriendlyMessage = ErrorMessages.getUserFriendlyMessage(
+              error.message,
+            );
           } else {
-            add(_ErrorResponseEvent('An unexpected error occurred: $error'));
+            userFriendlyMessage = ErrorMessages.messageError;
           }
+
+          add(_ErrorResponseEvent(userFriendlyMessage));
         }
       },
       onDone: () {
-        _logger.i('Stream completed');
         // Stream completed successfully - we handle this in the complete event
       },
     );
@@ -235,28 +247,18 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     _CompleteResponseEvent event,
     Emitter<CurrentChatState> emit,
   ) async {
-    _logger.i('Handling complete response with messageId: ${event.messageId}');
-
     if (state is CurrentChatLoaded) {
       final currentState = state as CurrentChatLoaded;
       final messages = List<Message>.from(
         currentState.messages,
       ); // Create a new list
 
-      _logger.i('Current messages count: ${messages.length}');
-
       // Add a placeholder for the completed response
       if (messages.isNotEmpty) {
         final lastMessage = messages.last;
-        _logger.i(
-          'Last message role: ${lastMessage.role}, isLoading: ${lastMessage.isLoading}',
-        );
 
         if (lastMessage.role == MessageRole.assistant &&
             lastMessage.isLoading) {
-          _logger.i(
-            'Completing assistant message with final content length: ${event.content.length}',
-          );
           final completedMessage = lastMessage.copyWith(
             isLoading: false,
             id: event.messageId,
@@ -266,7 +268,6 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
         }
       }
 
-      _logger.i('Emitting final state with isResponding: false');
       emit(
         currentState.copyWith(
           chat: currentState.chat!.copyWith(messages: messages),
@@ -286,26 +287,18 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     _RecievedChunksEvent event,
     Emitter<CurrentChatState> emit,
   ) async {
-    _logger.i('Handling received chunks: "${event.content}"');
-
     if (state is CurrentChatLoaded) {
       final currentState = state as CurrentChatLoaded;
       final messages = List<Message>.from(
         currentState.messages,
       ); // Create a new list
 
-      _logger.i('Current messages count: ${messages.length}');
-
       // Add the new chunk to the last message
       if (messages.isNotEmpty) {
         final lastMessage = messages.last;
-        _logger.i(
-          'Last message role: ${lastMessage.role}, content length: ${lastMessage.content.length}',
-        );
 
         if (lastMessage.role != MessageRole.assistant) {
           // If the last message is not from the assistant, create a new message
-          _logger.i('Creating new assistant message');
           final newMessage = Message(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             content: event.content,
@@ -316,9 +309,6 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
           );
           messages.add(newMessage);
         } else {
-          _logger.i(
-            'Updating existing assistant message, new content length: ${lastMessage.content.length + event.content.length}',
-          );
           final updatedMessage = lastMessage.copyWith(
             content: lastMessage.content + event.content,
             isLoading: true, // Keep loading state for the last message
@@ -327,7 +317,6 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
         }
       }
 
-      _logger.i('Emitting new state with ${messages.length} messages');
       emit(
         currentState.copyWith(
           chat: currentState.chat!.copyWith(messages: messages),
@@ -342,7 +331,20 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     _ErrorResponseEvent event,
     Emitter<CurrentChatState> emit,
   ) async {
-    emit(CurrentChatError(event.error));
+    if (state is CurrentChatLoaded) {
+      final currentState = state as CurrentChatLoaded;
+      // Reset all loading states but preserve chat data and add error
+      emit(
+        currentState.copyWith(
+          isResponding: false,
+          isRegenerating: false,
+          errorMessage: event.error,
+        ),
+      );
+    } else {
+      // If not in loaded state, create a new loaded state with just the error
+      emit(CurrentChatLoaded(errorMessage: event.error));
+    }
   }
 
   Future<void> _onSendMessage(
@@ -350,8 +352,6 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     Emitter<CurrentChatState> emit,
   ) async {
     if (event.message.trim().isEmpty) return;
-
-    _logger.i('Sending message: "${event.message}"');
 
     final currentState =
         state is CurrentChatLoaded
@@ -374,14 +374,10 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
         ) ??
         Chat(id: '', title: 'New Chat', messages: [userMessage]);
 
-    _logger.i(
-      'Emitting state with user message, total messages: ${updatedChat.messages.length}',
-    );
     emit(currentState.copyWith(chat: updatedChat, isResponding: true));
 
     final isNewChat = currentState.isNewChat;
 
-    _logger.i('Starting response stream listener');
     await _startListeningToResponseStream(isNewChat);
 
     final result = await chatRepository.sendMessage(
@@ -405,23 +401,33 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
       isLoading: true,
     );
 
-    result.fold((failure) => emit(CurrentChatError(failure.message)), (
-      responseChat,
-    ) {
-      _logger.i('Message sent successfully, chat ID: ${responseChat.id}');
-      emit(
-        finalState.copyWith(
-          chat: finalState.chat!.copyWith(
-            id: responseChat.id,
-            messages: [
-              ...finalState.messages,
-              emptyMessage, // Placeholder for response
-            ],
+    result.fold(
+      (failure) {
+        // Reset loading state and preserve chat state with error
+        emit(
+          finalState.copyWith(
+            isResponding: false,
+            isRegenerating: false,
+            errorMessage: ErrorMessages.getUserFriendlyMessage(failure.message),
           ),
-          isResponding: true,
-        ),
-      );
-    });
+        );
+      },
+      (responseChat) {
+        emit(
+          finalState.copyWith(
+            chat: finalState.chat!.copyWith(
+              id: responseChat.id,
+              messages: [
+                ...finalState.messages,
+                emptyMessage, // Placeholder for response
+              ],
+            ),
+            isResponding: true,
+            clearError: true, // Clear any previous errors
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _onRegenerateResponse(
@@ -436,7 +442,13 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     final messages = List<Message>.from(currentState.messages);
     final messageIndex = messages.indexWhere((m) => m.id == event.messageId);
     if (messageIndex == -1) {
-      emit(CurrentChatError('Message not found for regeneration'));
+      emit(
+        currentState.copyWith(
+          errorMessage: ErrorMessages.messageError,
+          isRegenerating: false,
+          isResponding: false,
+        ),
+      );
       return;
     }
     // Remove the message to regenerate
@@ -449,7 +461,6 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
       ),
     );
 
-    _logger.i('Regeneration started for message ID: ${event.messageId}');
     // Start listening to the response stream for regeneration
     await _startListeningToResponseStream(false);
 
@@ -459,7 +470,16 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
       model: event.model,
     );
 
-    result.fold((failure) => emit(CurrentChatError(failure.message)), (_) {});
+    result.fold((failure) {
+      // Reset regenerating state and preserve chat state with error
+      emit(
+        currentState.copyWith(
+          isRegenerating: false,
+          isResponding: false,
+          errorMessage: ErrorMessages.getUserFriendlyMessage(failure.message),
+        ),
+      );
+    }, (_) {});
   }
 
   void _onStartNewChat(
@@ -482,9 +502,17 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     );
 
     result.fold(
-      (failure) => emit(CurrentChatError(failure.message)),
+      (failure) => emit(
+        CurrentChatLoaded(
+          chat: currentState.chat,
+          errorMessage: ErrorMessages.getUserFriendlyMessage(failure.message),
+        ),
+      ),
       (title) => emit(
-        currentState.copyWith(chat: currentState.chat!.copyWith(title: title)),
+        currentState.copyWith(
+          chat: currentState.chat!.copyWith(title: title),
+          clearError: true, // Clear any previous errors
+        ),
       ),
     );
   }
@@ -504,6 +532,13 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
         chat: currentState.chat!.copyWith(title: event.title),
       ),
     );
+  }
+
+  void _onClearError(ClearErrorEvent event, Emitter<CurrentChatState> emit) {
+    if (state is CurrentChatLoaded) {
+      final currentState = state as CurrentChatLoaded;
+      emit(currentState.copyWith(clearError: true));
+    }
   }
 
   @override

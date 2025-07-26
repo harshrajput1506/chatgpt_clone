@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/core/utils/permission_helper.dart';
+import 'package:chatgpt_clone/core/utils/error_messages.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -76,9 +77,7 @@ class ImageUploadBloc extends Bloc<ImageUploadEvent, ImageUploadState> {
     // Check permissions
     final hasPermissions = await PermissionHelper.requestImagePermissions();
     if (!hasPermissions) {
-      emit(
-        ImageUploadError('Permission denied to access the gallery or camera.'),
-      );
+      emit(ImageUploadError(ErrorMessages.imagePermissionError));
       return;
     }
 
@@ -94,7 +93,9 @@ class ImageUploadBloc extends Bloc<ImageUploadEvent, ImageUploadState> {
     // Upload image
     final result = await chatRepository.uploadImage(imagePath: pickedFile.path);
     result.fold(
-      (failure) => emit(ImageUploadError(failure.message)),
+      (failure) => emit(
+        ImageUploadError(ErrorMessages.getUserFriendlyMessage(failure.message)),
+      ),
       (chatImage) => emit(
         ImageUploadSuccess(image: chatImage, localPath: pickedFile.path),
       ),

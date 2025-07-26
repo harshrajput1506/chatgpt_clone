@@ -12,6 +12,7 @@ class MessageModel extends Message {
     super.hasError,
   });
 
+  @override
   MessageModel copyWith({
     String? id,
     String? content,

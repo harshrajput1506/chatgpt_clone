@@ -69,18 +69,33 @@ class _ChatPageState extends State<ChatPage> {
             BlocListener<ImageUploadBloc, ImageUploadState>(
               listener: (context, state) {
                 if (state is ImageUploadError) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(state.message)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
                 }
               },
             ),
             BlocListener<CurrentChatBloc, CurrentChatState>(
               listener: (context, state) {
                 if (state is CurrentChatError) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(state.message)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                } else if (state is CurrentChatLoaded && state.hasError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.errorMessage!),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                  // Clear the error after showing it
+                  context.read<CurrentChatBloc>().add(ClearErrorEvent());
                 }
               },
             ),
@@ -203,6 +218,9 @@ class _ChatPageState extends State<ChatPage> {
 
           // Responding state changed
           if (previous.isResponding != current.isResponding) return true;
+
+          // Regenerating state changed
+          if (previous.isRegenerating != current.isRegenerating) return true;
 
           // Content of last message changed (for streaming updates)
           if (previous.messages.isNotEmpty && current.messages.isNotEmpty) {

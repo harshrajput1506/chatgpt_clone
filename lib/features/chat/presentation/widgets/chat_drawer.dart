@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/shimmer_loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
@@ -194,12 +195,23 @@ class ChatDrawer extends StatelessWidget {
     return BlocBuilder<ChatListBloc, ChatListState>(
       builder: (context, state) {
         if (state is ChatListLoading) {
-          return Center(
-            child: CircularProgressIndicator(
-              color:
-                  Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant, // Use the appropriate color
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Column(
+              children: List.generate(3, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: ShimmerLoading(
+                    child: Container(
+                      height: 48,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ),
+                );
+              }),
             ),
           );
         }
@@ -210,6 +222,7 @@ class ChatDrawer extends StatelessWidget {
               'Something went wrong',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ),
           );
@@ -224,6 +237,7 @@ class ChatDrawer extends StatelessWidget {
                 'No chats found',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             );
@@ -246,21 +260,34 @@ class ChatDrawer extends StatelessWidget {
                   color:
                       isSelected ? Theme.of(context).colorScheme.outline : null,
                 ),
-                child: ListTile(
-                  title: Text(
-                    chat.title,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.normal,
-                      color:
-                          isUpdating
-                              ? Theme.of(context).colorScheme.outlineVariant
-                              : Theme.of(context).colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () => onChatTap(originalIndex, chat.id),
-                ),
+                child:
+                    isUpdating
+                        ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: ShimmerLoading(
+                            child: Container(
+                              height: 48,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                          ),
+                        )
+                        : ListTile(
+                          title: Text(
+                            chat.title,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.normal,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => onChatTap(originalIndex, chat.id),
+                        ),
               );
             },
           );

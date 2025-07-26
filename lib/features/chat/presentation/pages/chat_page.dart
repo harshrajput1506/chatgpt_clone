@@ -9,6 +9,7 @@ import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_ui_cubit.dart
 import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/dot_animated_indicator.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/shimmer_loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -196,7 +197,48 @@ class _ChatPageState extends State<ChatPage> {
       },
       builder: (context, state) {
         if (state is CurrentChatLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const SizedBox(height: 16),
+                // first message shimmer
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ShimmerLoading(
+                      child: Container(
+                        height: 50,
+                        width: MediaQuery.of(context).size.width * 0.7,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // SSecond message shimmer
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ShimmerLoading(
+                      child: Container(
+                        height: 80,
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
         }
 
         if (state is CurrentChatError) {

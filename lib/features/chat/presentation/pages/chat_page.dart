@@ -64,6 +64,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _onScroll() {
+    // Ensure scroll controller has clients before accessing properties
+    if (!_scrollController.hasClients) return;
+
     final offset = _scrollController.offset;
     final maxScrollExtent = _scrollController.position.maxScrollExtent;
 
@@ -94,13 +97,21 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
+    // Cancel timer first to prevent any late callbacks
+    _fabHideTimer?.cancel();
+
+    // Remove listener before disposing to prevent errors
+    if (_scrollController.hasClients) {
+      _scrollController.removeListener(_onScroll);
+    }
+
+    // Dispose controllers
     _scrollController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _messageController.dispose();
     _messageFocusNode.dispose();
-    _fabHideTimer?.cancel();
+
     super.dispose();
   }
 
@@ -116,31 +127,46 @@ class _ChatPageState extends State<ChatPage> {
             BlocListener<ImageUploadBloc, ImageUploadState>(
               listener: (context, state) {
                 if (state is ImageUploadError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
+                  // Use post frame callback to avoid interfering with scroll operations
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.message),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                    }
+                  });
                 }
               },
             ),
             BlocListener<CurrentChatBloc, CurrentChatState>(
               listener: (context, state) {
                 if (state is CurrentChatError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
+                  // Use post frame callback to avoid interfering with scroll operations
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.message),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                    }
+                  });
                 } else if (state is CurrentChatLoaded && state.hasError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.errorMessage!),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
+                  // Use post frame callback to avoid interfering with scroll operations
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.errorMessage!),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                    }
+                  });
                   // Clear the error after showing it
                   context.read<CurrentChatBloc>().add(ClearErrorEvent());
                 }
@@ -149,6 +175,9 @@ class _ChatPageState extends State<ChatPage> {
           ],
           child: NotificationListener<ScrollNotification>(
             onNotification: (scrollNotification) {
+              // Ensure scroll controller is available before processing
+              if (!_scrollController.hasClients) return false;
+
               if (scrollNotification is ScrollStartNotification) {
                 // User started scrolling - cancel any pending timer and hide FAB
                 _fabHideTimer?.cancel();
@@ -199,11 +228,25 @@ class _ChatPageState extends State<ChatPage> {
                         duration: const Duration(milliseconds: 200),
                         child: InkWell(
                           onTap: () {
-                            _scrollController.animateTo(
-                              _scrollController.position.maxScrollExtent,
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
+                            if (_scrollController.hasClients) {
+                              try {
+                                _scrollController.animateTo(
+                                  _scrollController.position.maxScrollExtent,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              } catch (e) {
+                                // Handle any potential scrolling errors
+                                // Fallback to jump to bottom if animation fails
+                                try {
+                                  _scrollController.jumpTo(
+                                    _scrollController.position.maxScrollExtent,
+                                  );
+                                } catch (e) {
+                                  // Ignore if even jump fails
+                                }
+                              }
+                            }
                             // Reset auto-scroll flag
                             _shouldAutoScroll = false;
                           },
@@ -744,12 +787,17 @@ class _ChatPageState extends State<ChatPage> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+      if (_scrollController.hasClients && mounted) {
+        try {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        } catch (e) {
+          // Handle any potential scrolling errors silently
+          // This can happen if the scroll controller is disposed or in an invalid state
+        }
       }
     });
   }

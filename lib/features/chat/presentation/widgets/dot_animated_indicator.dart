@@ -22,8 +22,8 @@ class _DotAnimatedIndicatorState extends State<DotAnimatedIndicator>
     )..repeat(reverse: true); // Loop animation
 
     _radiusAnimation = Tween<double>(
-      begin: 4,
-      end: 6,
+      begin: 6,
+      end: 8,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
@@ -36,7 +36,7 @@ class _DotAnimatedIndicatorState extends State<DotAnimatedIndicator>
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 60,
+      height: 40,
       padding: const EdgeInsets.all(4),
       child: AnimatedBuilder(
         animation: _radiusAnimation,
@@ -46,7 +46,7 @@ class _DotAnimatedIndicatorState extends State<DotAnimatedIndicator>
               _radiusAnimation.value,
               color: Theme.of(context).colorScheme.onSurface,
             ),
-            size: const Size(100, 100),
+            size: const Size(60, 60),
           );
         },
       ),

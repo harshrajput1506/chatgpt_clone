@@ -153,11 +153,7 @@ class ChatRepositoryImpl implements ChatRepository {
   }) async {
     try {
       // Call the OpenAI service to regenerate the response
-      await openAIService.regenerateStreamResponse(
-        chatId,
-        messageId,
-        model,
-      );     
+      await openAIService.regenerateStreamResponse(chatId, model, messageId);
 
       return Right(null);
     } on Failure catch (e) {

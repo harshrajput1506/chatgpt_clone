@@ -340,7 +340,6 @@ class OpenAIService {
                       'content': fullContent,
                       'messageId': jsonData['messageId'],
                       'regenerated': jsonData['regenerated'] ?? true,
-                      'chat': jsonData['chat'],
                     });
                     _logger.i(
                       'Regenerate stream completed with content: $fullContent',

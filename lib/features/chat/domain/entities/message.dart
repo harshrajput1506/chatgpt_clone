@@ -21,6 +21,28 @@ class Message extends Equatable {
     this.hasError = false,
   });
 
+  Message copyWith({
+    String? id,
+    String? content,
+    MessageType? type,
+    MessageRole? role,
+    DateTime? timestamp,
+    String? imageUrl,
+    bool? isLoading,
+    bool? hasError,
+  }) {
+    return Message(
+      id: id ?? this.id,
+      content: content ?? this.content,
+      type: type ?? this.type,
+      role: role ?? this.role,
+      timestamp: timestamp ?? this.timestamp,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isLoading: isLoading ?? this.isLoading,
+      hasError: hasError ?? this.hasError,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,

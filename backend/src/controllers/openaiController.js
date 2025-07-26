@@ -414,6 +414,178 @@ export const regenerateResponse = async (req, res) => {
     }
 };
 
+// Regenerate streaming response for a specific message
+export const regenerateStreamResponse = async (req, res) => {
+    try {
+        if (!isOpenAIConfigured()) {
+            res.write(`data: ${JSON.stringify({ error: 'OpenAI API is not configured' })}\n\n`);
+            res.end();
+            return;
+        }
+
+        const { chatId, messageId } = req.params;
+        const {
+            model = 'gpt-4o-mini',
+            max_tokens = 1000,
+            temperature = 0.7,
+            includeSystemMessage = true
+        } = req.body;
+
+        // Set headers for Server-Sent Events
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        // Check if chat exists
+        const chat = await prisma.chat.findUnique({
+            where: { id: chatId }
+        });
+
+        if (!chat) {
+            res.write(`data: ${JSON.stringify({ error: 'Chat not found' })}\n\n`);
+            res.end();
+            return;
+        }
+
+        // Find the message to regenerate from
+        const targetMessage = await prisma.message.findUnique({
+            where: { id: messageId }
+        });
+
+        if (!targetMessage) {
+            res.write(`data: ${JSON.stringify({ error: 'Message not found' })}\n\n`);
+            res.end();
+            return;
+        }
+
+        if (targetMessage.chatId !== chatId) {
+            res.write(`data: ${JSON.stringify({ error: 'Message does not belong to this chat' })}\n\n`);
+            res.end();
+            return;
+        }
+
+        if (targetMessage.sender !== 'assistant') {
+            res.write(`data: ${JSON.stringify({ error: 'Can only regenerate response for assistant messages' })}\n\n`);
+            res.end();
+            return;
+        }
+
+        // Delete the target message and all messages after it
+        await prisma.message.deleteMany({
+            where: {
+                chatId: chatId,
+                createdAt: {
+                    gte: targetMessage.createdAt
+                }
+            }
+        });
+
+        // Get conversation context up to (but not including) the target message
+        const messages = await prisma.message.findMany({
+            where: {
+                chatId,
+                createdAt: {
+                    lt: targetMessage.createdAt
+                }
+            },
+            orderBy: { createdAt: 'asc' },
+            include: { image: true }
+        });
+
+        if (messages.length === 0) {
+            res.write(`data: ${JSON.stringify({ error: 'No messages found in chat' })}\n\n`);
+            res.end();
+            return;
+        }
+
+        // Ensure the last message is from user (so we can regenerate assistant response)
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.sender !== 'user') {
+            res.write(`data: ${JSON.stringify({
+                error: 'Cannot regenerate response',
+                details: 'The conversation must end with a user message to regenerate assistant response'
+            })}\n\n`);
+            res.end();
+            return;
+        }
+
+        // Build context for OpenAI
+        const context = {
+            messages: messages,
+            truncated: false,
+            hasContextSummary: false,
+            estimatedTokens: messages.length * 50 // Rough estimate
+        };
+
+        // Format messages for the specified model
+        const formattedMessages = formatMessageForOpenAI(context);
+
+        const stream = await generateStreamingResponse(formattedMessages, {
+            model,
+            max_tokens,
+            temperature
+        });
+
+        let fullResponse = '';
+
+        // Stream the response
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+                fullResponse += content;
+                res.write(`data: ${JSON.stringify({
+                    content,
+                    type: 'chunk',
+                    model: chunk.model,
+                    regenerated: true
+                })}\n\n`);
+            }
+        }
+
+        // Save complete response to database
+        const aiMessage = await prisma.message.create({
+            data: {
+                chatId,
+                content: fullResponse,
+                sender: 'assistant'
+            },
+            include: {
+                image: true
+            }
+        });
+
+        // Get updated chat with all messages
+        const updatedChat = await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: {
+                messages: {
+                    orderBy: { createdAt: 'asc' },
+                    include: { image: true }
+                }
+            }
+        });
+
+        // Send completion signal
+        res.write(`data: ${JSON.stringify({
+            type: 'complete',
+            messageId: aiMessage.id,
+            fullContent: fullResponse,
+            regenerated: true,
+        })}\n\n`);
+
+        res.end();
+
+    } catch (error) {
+        console.error('Regenerate Streaming Error:', error);
+        res.write(`data: ${JSON.stringify({
+            error: 'Failed to regenerate streaming response',
+            details: error.message
+        })}\n\n`);
+        res.end();
+    }
+};
+
 // Test OpenAI connection
 export const testOpenAIConnection = async (req, res) => {
     try {

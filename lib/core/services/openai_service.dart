@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:chatgpt_clone/core/constants/app_url.dart';
 import 'package:dio/dio.dart';
 import 'package:logger/web.dart';
@@ -7,7 +11,17 @@ class OpenAIService {
   final Dio _dio;
   final Logger _logger = Logger(printer: PrettyPrinter());
   final String baseUrl = AppUrl.baseUrl;
+
+  StreamController<Map<String, dynamic>>? _responseStreamController;
+  StreamSubscription? _streamSubscription;
+
   OpenAIService(this._dio);
+
+  Stream<Map<String, dynamic>> get responseStream {
+    _responseStreamController ??=
+        StreamController<Map<String, dynamic>>.broadcast();
+    return _responseStreamController!.stream;
+  }
 
   Future<Map<String, dynamic>> generateResponse(
     String chatId,
@@ -71,6 +85,261 @@ class OpenAIService {
     }
   }
 
+  Future<void> generateStreamResponse(String chatId, String model) async {
+    try {
+      //Ensure we have a fresh stream controller
+      await _closeExistingStream();
+      _responseStreamController =
+          StreamController<Map<String, dynamic>>.broadcast();
+
+      final response = await _dio.post<ResponseBody>(
+        '$baseUrl/ai/chats/$chatId/stream',
+        data: {'model': model},
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {
+            'Accept': 'text/event-stream',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.data == null) {
+        _logger.e('No response data received from stream endpoint');
+        _responseStreamController?.addError(
+          ServerFailure('No response data received'),
+        );
+        return;
+      }
+
+      _streamSubscription = response.data!.stream
+          .transform(
+            StreamTransformer<Uint8List, String>.fromHandlers(
+              handleData: (data, sink) {
+                sink.add(utf8.decode(data));
+              },
+            ),
+          )
+          .transform(const LineSplitter())
+          .listen(
+            (line) {
+              if (line.startsWith("data: ")) {
+                final raw = line.replaceFirst("data: ", "").trim();
+                if (raw == "[DONE]") {
+                  _logger.i("Stream completed.");
+                  return;
+                }
+
+                try {
+                  final jsonData = json.decode(raw);
+                  final type = jsonData['type'];
+
+                  if (type == 'chunk') {
+                    final content = jsonData['content'];
+                    _responseStreamController?.add({
+                      'type': 'chunk',
+                      'content': content,
+                    });
+                    _logger.d('Chunk received: $content');
+                  } else if (type == 'complete') {
+                    final fullContent = jsonData['fullContent'];
+                    _responseStreamController?.add({
+                      'type': 'complete',
+                      'content': fullContent,
+                      'messageId': jsonData['messageId'],
+                    });
+                    _logger.i('Stream completed with content: $fullContent');
+                  }
+                } catch (e) {
+                  _logger.e('Error parsing JSON: $e');
+                  _responseStreamController?.addError(
+                    ServerFailure('Error parsing streaming response'),
+                  );
+                }
+              }
+            },
+            onDone: () {
+              _logger.i("Stream done.");
+              _closeExistingStream();
+            },
+            onError: (e) {
+              _logger.e('Stream error: $e');
+              _responseStreamController?.addError(
+                ServerFailure('Stream error: $e'),
+              );
+              _closeExistingStream();
+            },
+            cancelOnError: false,
+          );
+    } on DioException catch (e) {
+      _logger.e('Network error in stream: ${e.message}');
+
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        _responseStreamController?.addError(
+          NetworkFailure('Connection timeout'),
+        );
+        throw NetworkFailure('Connection timeout');
+      } else if (e.response?.statusCode == 401) {
+        _responseStreamController?.addError(ServerFailure('Invalid API key'));
+        throw ServerFailure('Invalid API key');
+      } else if (e.response?.statusCode == 429) {
+        _responseStreamController?.addError(
+          ServerFailure('Rate limit exceeded'),
+        );
+        throw ServerFailure('Rate limit exceeded');
+      } else {
+        _responseStreamController?.addError(ServerFailure('Network error'));
+        throw ServerFailure('Network error: ${e.message}');
+      }
+    } on ServerFailure catch (e) {
+      _logger.e('Server failure error: $e');
+      _responseStreamController?.addError(e);
+      rethrow;
+    } catch (e) {
+      _logger.e('Unexpected error: $e');
+      _responseStreamController?.addError(
+        ServerFailure('Unexpected error: $e'),
+      );
+      throw ServerFailure('Unexpected error: $e');
+    }
+  }
+
+  Future<void> regenerateStreamResponse(
+    String chatId,
+    String model,
+    String messageId,
+  ) async {
+    try {
+      //Ensure we have a fresh stream controller
+      await _closeExistingStream();
+      _responseStreamController =
+          StreamController<Map<String, dynamic>>.broadcast();
+
+      final response = await _dio.post<ResponseBody>(
+        '$baseUrl/ai/chats/$chatId/messages/$messageId/regenerate',
+        data: {'model': model},
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {
+            'Accept': 'text/event-stream',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.data == null) {
+        _logger.e('No response data received from stream endpoint');
+        _responseStreamController?.addError(
+          ServerFailure('No response data received'),
+        );
+        return;
+      }
+
+      _streamSubscription = response.data!.stream
+          .transform(
+            StreamTransformer<Uint8List, String>.fromHandlers(
+              handleData: (data, sink) {
+                sink.add(utf8.decode(data));
+              },
+            ),
+          )
+          .transform(const LineSplitter())
+          .listen(
+            (line) {
+              if (line.startsWith("data: ")) {
+                final raw = line.replaceFirst("data: ", "").trim();
+                if (raw == "[DONE]") {
+                  _logger.i("Stream completed.");
+                  return;
+                }
+
+                try {
+                  final jsonData = json.decode(raw);
+                  final type = jsonData['type'];
+
+                  if (type == 'chunk') {
+                    final content = jsonData['content'];
+                    _responseStreamController?.add({
+                      'type': 'chunk',
+                      'content': content,
+                    });
+                    _logger.d('Chunk received: $content');
+                  } else if (type == 'complete') {
+                    final fullContent = jsonData['fullContent'];
+                    _responseStreamController?.add({
+                      'type': 'complete',
+                      'content': fullContent,
+                      'messageId': jsonData['messageId'],
+                    });
+                    _logger.i('Stream completed with content: $fullContent');
+                  }
+                } catch (e) {
+                  _logger.e('Error parsing JSON: $e');
+                  _responseStreamController?.addError(
+                    ServerFailure('Error parsing streaming response'),
+                  );
+                }
+              }
+            },
+            onDone: () {
+              _logger.i("Stream done.");
+              _closeExistingStream();
+            },
+            onError: (e) {
+              _logger.e('Stream error: $e');
+              _responseStreamController?.addError(
+                ServerFailure('Stream error: $e'),
+              );
+              _closeExistingStream();
+            },
+            cancelOnError: false,
+          );
+    } on DioException catch (e) {
+      _logger.e('Network error in stream: ${e.message}');
+
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        _responseStreamController?.addError(
+          NetworkFailure('Connection timeout'),
+        );
+        throw NetworkFailure('Connection timeout');
+      } else if (e.response?.statusCode == 401) {
+        _responseStreamController?.addError(ServerFailure('Invalid API key'));
+        throw ServerFailure('Invalid API key');
+      } else if (e.response?.statusCode == 429) {
+        _responseStreamController?.addError(
+          ServerFailure('Rate limit exceeded'),
+        );
+        throw ServerFailure('Rate limit exceeded');
+      } else {
+        _responseStreamController?.addError(ServerFailure('Network error'));
+        throw ServerFailure('Network error: ${e.message}');
+      }
+    } on ServerFailure catch (e) {
+      _logger.e('Server failure error: $e');
+      _responseStreamController?.addError(e);
+      rethrow;
+    } catch (e) {
+      _logger.e('Unexpected error: $e');
+      _responseStreamController?.addError(
+        ServerFailure('Unexpected error: $e'),
+      );
+      throw ServerFailure('Unexpected error: $e');
+    }
+  }
+
+  Future<void> _closeExistingStream() async {
+    await _streamSubscription?.cancel();
+    _streamSubscription = null;
+
+    if (_responseStreamController != null &&
+        !_responseStreamController!.isClosed) {
+      await _responseStreamController!.close();
+    }
+    _responseStreamController = null;
+  }
+
   Future<Map<String, dynamic>> regenerateResponse(
     String chatId,
     String messageId,
@@ -130,5 +399,9 @@ class OpenAIService {
       _logger.e('Unexpected error: $e');
       throw ServerFailure('Unexpected error');
     }
+  }
+
+  void dispose() {
+    _closeExistingStream();
   }
 }

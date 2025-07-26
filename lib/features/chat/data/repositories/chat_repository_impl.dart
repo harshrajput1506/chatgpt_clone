@@ -10,7 +10,6 @@ import 'package:chatgpt_clone/features/chat/data/models/chat_model.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat.dart';
 import 'package:chatgpt_clone/features/chat/domain/entities/chat_image.dart';
 import 'package:chatgpt_clone/features/chat/domain/repositories/chat_repository.dart';
-import 'package:chatgpt_clone/features/chat/data/models/message_model.dart';
 import 'package:dartz/dartz.dart';
 import 'package:logger/web.dart';
 
@@ -58,13 +57,12 @@ class ChatRepositoryImpl implements ChatRepository {
       );
 
       // generate response from OpenAI
-      final response = await openAIService.generateResponse(chatId, model);
-      final responseMessage = MessageModel.fromJson(response);
+      await openAIService.generateStreamResponse(chatId, model);
 
       final ChatModel chat = ChatModel(
         id: chatId,
         title: 'title',
-        messages: [responseMessage],
+        messages: [],
       );
 
       return Right(chat);
@@ -148,24 +146,20 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<Either<Failure, Chat>> regenerateResponse({
+  Future<Either<Failure, void>> regenerateResponse({
     required String chatId,
     required String messageId,
     required String model,
   }) async {
     try {
       // Call the OpenAI service to regenerate the response
-      final response = await openAIService.regenerateResponse(
+      await openAIService.regenerateStreamResponse(
         chatId,
         messageId,
         model,
-      );
+      );     
 
-      // Extract the chat data from the response
-      final chatData = response['chat'] as Map<String, dynamic>;
-      final chat = ChatModel.fromJson(chatData);
-
-      return Right(chat);
+      return Right(null);
     } on Failure catch (e) {
       return Left(e);
     } catch (e) {
@@ -224,5 +218,14 @@ class ChatRepositoryImpl implements ChatRepository {
       _logger.e('Failed to upload image: $e');
       return Left(ServerFailure('Failed to upload image'));
     }
+  }
+
+  @override
+  Stream<Map<String, dynamic>> get responseStream =>
+      openAIService.responseStream;
+
+  @override
+  void dispose() {
+    openAIService.dispose();
   }
 }

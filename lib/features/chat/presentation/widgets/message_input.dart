@@ -52,7 +52,7 @@ class MessageInput extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _buildInputRow(),
+          Expanded(child: _buildInputRow()),
         ],
       ),
     );
@@ -67,11 +67,11 @@ class MessageInput extends StatelessWidget {
             child: Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(24),
                   child: Image.file(
                     File(state.localPath),
-                    height: 100,
-                    width: 100,
+                    height: 120,
+                    width: 120,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -150,96 +150,98 @@ class MessageInput extends StatelessWidget {
             final isUploading = uploadState is ImageUploadInProgress;
             final isDisabled = !enabled || isUploading;
 
-            return Expanded(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxHeight: 320, // Limit max height to ~5-6 lines
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildImagePreview(),
+            return Container(
+              constraints: BoxConstraints(maxHeight: 320),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildImagePreview(),
 
-                      TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        enabled: enabled,
-                        onChanged: (value) {
-                          onTextChanged(value);
-                        },
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface,
+                  Flexible(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            enabled: enabled,
+                            onChanged: (value) {
+                              onTextChanged(value);
+                            },
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            maxLines: null,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: InputDecoration(
+                              hintText: 'Ask anything',
+                              hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.normal,
+                              ),
+                              filled: false,
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
                         ),
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          hintText: 'Ask anything',
-                          hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.normal,
-                          ),
-                          filled: false,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          suffixIcon:
-                              hasInput
-                                  ? InkWell(
-                                    onTap:
-                                        !isDisabled
-                                            ? () {
-                                              _handleSend(
-                                                context,
-                                                selectedModel,
-                                                uploadState,
-                                              );
-                                              controller.clear();
-                                            }
-                                            : null,
-                                    child: Container(
-                                      margin: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.onSurface,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(4.0),
-                                        child: SvgPicture.asset(
-                                          'assets/icons/up-arrow.svg',
-                                          colorFilter: ColorFilter.mode(
-                                            isDisabled
-                                                ? theme
-                                                    .colorScheme
-                                                    .outlineVariant
-                                                : theme.colorScheme.surface,
-                                            BlendMode.srcIn,
-                                          ),
-                                        ),
-                                      ),
+
+                        hasInput
+                            ? InkWell(
+                              onTap:
+                                  !isDisabled
+                                      ? () {
+                                        _handleSend(
+                                          context,
+                                          selectedModel,
+                                          uploadState,
+                                        );
+                                        controller.clear();
+                                      }
+                                      : null,
+                              child: Container(
+                                margin: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.onSurface,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: SvgPicture.asset(
+                                    'assets/icons/up-arrow.svg',
+                                    colorFilter: ColorFilter.mode(
+                                      isDisabled
+                                          ? theme.colorScheme.outlineVariant
+                                          : theme.colorScheme.surface,
+                                      BlendMode.srcIn,
                                     ),
-                                  )
-                                  : IconButton(
-                                    icon: SvgPicture.asset(
-                                      'assets/icons/model-control.svg',
-                                      colorFilter: ColorFilter.mode(
-                                        theme.colorScheme.onSurfaceVariant,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                    onPressed: onShowModalSheet,
                                   ),
-                        ),
-                      ),
-                    ],
+                                ),
+                              ),
+                            )
+                            : IconButton(
+                              icon: SvgPicture.asset(
+                                'assets/icons/model-control.svg',
+                                colorFilter: ColorFilter.mode(
+                                  theme.colorScheme.onSurfaceVariant,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              onPressed: onShowModalSheet,
+                            ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             );
           },

@@ -166,6 +166,34 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildChatArea() {
     return BlocBuilder<CurrentChatBloc, CurrentChatState>(
+      buildWhen: (previous, current) {
+        // Always rebuild for different state types
+        if (previous.runtimeType != current.runtimeType) return true;
+
+        // For CurrentChatLoaded states, rebuild if:
+        if (previous is CurrentChatLoaded && current is CurrentChatLoaded) {
+          // Chat changed
+          if (previous.chat?.id != current.chat?.id) return true;
+
+          // Message count changed
+          if (previous.messages.length != current.messages.length) return true;
+
+          // Responding state changed
+          if (previous.isResponding != current.isResponding) return true;
+
+          // Content of last message changed (for streaming updates)
+          if (previous.messages.isNotEmpty && current.messages.isNotEmpty) {
+            final prevLastMessage = previous.messages.last;
+            final currLastMessage = current.messages.last;
+            if (prevLastMessage.content != currLastMessage.content) return true;
+            if (prevLastMessage.isLoading != currLastMessage.isLoading) {
+              return true;
+            }
+          }
+        }
+
+        return true; // Rebuild by default to ensure streaming works
+      },
       builder: (context, state) {
         if (state is CurrentChatLoading) {
           return const Center(child: CircularProgressIndicator());

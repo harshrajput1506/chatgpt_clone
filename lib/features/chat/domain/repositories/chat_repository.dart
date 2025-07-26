@@ -19,13 +19,16 @@ abstract class ChatRepository {
     required String chatId,
     required String title,
   });
-  Future<Either<Failure, Chat>> regenerateResponse({
+  Future<Either<Failure, void>> regenerateResponse({
     required String chatId,
     required String messageId,
     required String model,
   });
 
-  Future<Either<Failure, ChatImage>> uploadImage({
-    required String imagePath
-  });
+  Future<Either<Failure, ChatImage>> uploadImage({required String imagePath});
+
+  Stream<Map<String, dynamic>> get responseStream;
+
+  void dispose();
+
 }

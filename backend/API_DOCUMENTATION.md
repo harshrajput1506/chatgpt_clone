@@ -352,6 +352,34 @@
   }
   ```
 
+### Regenerate AI Streaming Response
+- **POST** `/ai/chats/:chatId/messages/:messageId/regenerate-stream`
+- **Description**: Regenerates an AI response with streaming for a specific assistant message. Deletes the target message and all subsequent messages, then generates a new streaming response based on the conversation context up to the preceding user message.
+- **Parameters**:
+  - `chatId` (string): Chat ID (MongoDB ObjectId)
+  - `messageId` (string): ID of the assistant message to regenerate (MongoDB ObjectId)
+- **Body**:
+  ```json
+  {
+    "model": "gpt-4o-mini", // optional, default: gpt-4o-mini
+    "max_tokens": 1000, // optional, default: 1000
+    "temperature": 0.7, // optional, default: 0.7
+    "includeSystemMessage": true // optional, default: true
+  }
+  ```
+- **Response**: Server-Sent Events (SSE) stream
+  - Content-Type: `text/event-stream`
+  - Chunk events: `{"content": "text", "type": "chunk", "model": "string", "regenerated": true}`
+  - Complete event: 
+    ```json
+    {
+      "type": "complete",
+      "messageId": "string",
+      "fullContent": "string",
+      "regenerated": true,
+    }
+    ```
+
 ### Get Available Models
 - **GET** `/ai/models`
 - **Description**: Returns list of available OpenAI models
@@ -569,6 +597,53 @@ Future<Map<String, dynamic>?> regenerateAIResponse(
   return null;
 }
 
+// Regenerate AI streaming response for a specific message
+Stream<Map<String, dynamic>> regenerateStreamAIResponse(
+  String chatId, 
+  String messageId, {
+  String model = 'gpt-4o-mini',
+  int maxTokens = 1000,
+  double temperature = 0.7,
+}) async* {
+  final request = http.Request(
+    'POST',
+    Uri.parse('http://localhost:5000/api/ai/chats/$chatId/messages/$messageId/regenerate-stream'),
+  );
+  
+  request.headers['Content-Type'] = 'application/json';
+  request.body = json.encode({
+    'model': model,
+    'max_tokens': maxTokens,
+    'temperature': temperature,
+  });
+  
+  final client = http.Client();
+  final response = await client.send(request);
+  
+  await for (final chunk in response.stream.transform(utf8.decoder)) {
+    final lines = chunk.split('\n');
+    for (final line in lines) {
+      if (line.startsWith('data: ')) {
+        final data = line.substring(6);
+        if (data.trim().isNotEmpty) {
+          try {
+            final parsed = json.decode(data);
+            yield parsed;
+            if (parsed['type'] == 'complete') {
+              client.close();
+              return;
+            }
+          } catch (e) {
+            // Handle parsing errors
+            print('Error parsing SSE data: $e');
+          }
+        }
+      }
+    }
+  }
+  client.close();
+}
+
 // Stream AI response (using Server-Sent Events)
 Stream<String> streamAIResponse(String chatId, {
   String model = 'gpt-3.5-turbo',
@@ -650,6 +725,32 @@ class ChatService {
       print('Regenerated: ${response['regenerated']}');
       print('Updated Chat: ${response['chat']['title']}');
       print('Total Messages in Chat: ${response['chat']['messages'].length}');
+    }
+  }
+  
+  // Regenerate AI response with streaming for a specific message
+  Future<void> regenerateStreamResponse(String chatId, String assistantMessageId) async {
+    print('Starting regenerate stream for message: $assistantMessageId');
+    
+    await for (final event in regenerateStreamAIResponse(chatId, assistantMessageId)) {
+      if (event['type'] == 'chunk') {
+        // Handle streaming content chunk
+        print('Chunk: ${event['content']}');
+        // Update UI with new content chunk
+      } else if (event['type'] == 'complete') {
+        // Handle completion
+        print('Regeneration Complete!');
+        print('Full Response: ${event['fullContent']}');
+        print('Message ID: ${event['messageId']}');
+        print('Updated Chat: ${event['chat']['title']}');
+        print('Total Messages in Chat: ${event['chat']['messages'].length}');
+        print('Context Used: ${event['context']['messagesUsed']} messages');
+        break;
+      } else if (event['error'] != null) {
+        // Handle error
+        print('Error: ${event['error']}');
+        break;
+      }
     }
   }
   

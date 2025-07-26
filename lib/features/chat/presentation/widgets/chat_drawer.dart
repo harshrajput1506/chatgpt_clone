@@ -1,4 +1,5 @@
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/shimmer_loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -198,20 +199,17 @@ class ChatDrawer extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
-              children: List.generate(3, (index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: ShimmerLoading(
-                    child: Container(
-                      height: 48,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+              children: [
+                ShimmerLoading(
+                  child: Container(
+                    height: 48,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
-                );
-              }),
+                ),
+              ],
             ),
           );
         }
@@ -255,39 +253,14 @@ class ChatDrawer extends StatelessWidget {
                   updatingChatIndex == originalIndex ||
                   deletetingChatIndex == originalIndex;
 
-              return Container(
-                decoration: BoxDecoration(
-                  color:
-                      isSelected ? Theme.of(context).colorScheme.outline : null,
-                ),
-                child:
-                    isUpdating
-                        ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: ShimmerLoading(
-                            child: Container(
-                              height: 48,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                          ),
-                        )
-                        : ListTile(
-                          title: Text(
-                            chat.title,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.normal,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () => onChatTap(originalIndex, chat.id),
-                        ),
+              return _ChatListItem(
+                chat: chat,
+                originalIndex: originalIndex,
+                isSelected: isSelected,
+                isUpdating: isUpdating,
+                onChatTap: onChatTap,
+                onRenameChat: onRenameChat,
+                onDeleteChat: onDeleteChat,
               );
             },
           );
@@ -296,5 +269,139 @@ class ChatDrawer extends StatelessWidget {
         return const SizedBox.shrink();
       },
     );
+  }
+}
+
+class _ChatListItem extends StatefulWidget {
+  final dynamic chat;
+  final int originalIndex;
+  final bool isSelected;
+  final bool isUpdating;
+  final Function(int, String) onChatTap;
+  final Function(String, int, String) onRenameChat;
+  final Function(String, int) onDeleteChat;
+
+  const _ChatListItem({
+    required this.chat,
+    required this.originalIndex,
+    required this.isSelected,
+    required this.isUpdating,
+    required this.onChatTap,
+    required this.onRenameChat,
+    required this.onDeleteChat,
+  });
+
+  @override
+  State<_ChatListItem> createState() => _ChatListItemState();
+}
+
+class _ChatListItemState extends State<_ChatListItem> {
+  late final MenuController menuController;
+
+  @override
+  void initState() {
+    super.initState();
+    menuController = MenuController();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OptionsMenu(
+      menuController: menuController,
+      alignmentOffset: Offset(MediaQuery.of(context).size.width * 0.3, 0),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      menuItems: _buildChatMenuItems(
+        context,
+        onRenameTap:
+            () => widget.onRenameChat(
+              widget.chat.id,
+              widget.originalIndex,
+              widget.chat.title,
+            ),
+        onDeleteTap:
+            () => widget.onDeleteChat(widget.chat.id, widget.originalIndex),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color:
+              widget.isSelected ? Theme.of(context).colorScheme.outline : null,
+        ),
+        child: ListTile(
+          title: Text(
+            widget.chat.title,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.normal,
+              color:
+                  widget.isUpdating
+                      ? Theme.of(context).colorScheme.outlineVariant
+                      : Theme.of(context).colorScheme.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          onLongPress: () {
+            if (!widget.isUpdating && !menuController.isOpen) {
+              menuController.open();
+            } else {
+              menuController.close();
+            }
+          },
+          onTap:
+              !widget.isUpdating
+                  ? () => widget.onChatTap(widget.originalIndex, widget.chat.id)
+                  : null,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildChatMenuItems(
+    BuildContext context, {
+    required VoidCallback onRenameTap,
+    required VoidCallback onDeleteTap,
+  }) {
+    final theme = Theme.of(context);
+    return [
+      MenuItemButton(
+        leadingIcon: SvgPicture.asset(
+          'assets/icons/rename.svg',
+          width: 20,
+          height: 20,
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            theme.colorScheme.onSurfaceVariant,
+            BlendMode.srcIn,
+          ),
+        ),
+        onPressed: onRenameTap,
+        child: Text(
+          'Rename',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+      ),
+      MenuItemButton(
+        leadingIcon: SvgPicture.asset(
+          'assets/icons/delete.svg',
+          width: 24,
+          height: 24,
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            theme.colorScheme.error,
+            BlendMode.srcIn,
+          ),
+        ),
+        onPressed: onDeleteTap,
+        child: Text(
+          'Delete',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.error,
+          ),
+        ),
+      ),
+    ];
   }
 }

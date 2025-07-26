@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_list_bloc.dart'
@@ -40,20 +41,66 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Scroll-based shadow state
+  bool _showAppBarShadow = false;
+  bool _showMessageInputShadow = false;
+
+  // Track message count to prevent unnecessary auto-scrolling
+  int _lastMessageCount = 0;
+  bool _shouldAutoScroll = false;
+
+  // FAB scroll to bottom state
+  bool _showScrollToBottomFAB = false;
+  bool _isUserScrolling = false;
+  Timer? _fabHideTimer;
   @override
   void initState() {
     super.initState();
     // Load chats on initialization
     context.read<ChatListBloc>().add(LoadChatsEvent());
+
+    // Add scroll listener for shadow effects
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final offset = _scrollController.offset;
+    final maxScrollExtent = _scrollController.position.maxScrollExtent;
+
+    // Show app bar shadow when scrolled down from top
+    final shouldShowAppBarShadow = offset > 0;
+
+    // Show message input shadow when not at bottom
+    final shouldShowMessageInputShadow = offset < maxScrollExtent - 10;
+
+    // Show FAB when not at bottom (with some threshold)
+    final shouldShowScrollToBottomFAB = offset < maxScrollExtent - 100;
+
+    if (_showAppBarShadow != shouldShowAppBarShadow ||
+        _showMessageInputShadow != shouldShowMessageInputShadow ||
+        _showScrollToBottomFAB != shouldShowScrollToBottomFAB) {
+      setState(() {
+        _showAppBarShadow = shouldShowAppBarShadow;
+        _showMessageInputShadow = shouldShowMessageInputShadow;
+        _showScrollToBottomFAB = shouldShowScrollToBottomFAB;
+      });
+
+      // Cancel existing timer if FAB state changed
+      if (_showScrollToBottomFAB != shouldShowScrollToBottomFAB) {
+        _fabHideTimer?.cancel();
+      }
+    }
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _messageController.dispose();
     _messageFocusNode.dispose();
+    _fabHideTimer?.cancel();
     super.dispose();
   }
 
@@ -100,12 +147,101 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ],
-          child: Column(
-            children: [
-              _buildAppBar(),
-              Expanded(child: _buildChatArea()),
-              _buildMessageInput(),
-            ],
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (scrollNotification) {
+              if (scrollNotification is ScrollStartNotification) {
+                // User started scrolling - cancel any pending timer and hide FAB
+                _fabHideTimer?.cancel();
+                setState(() {
+                  _isUserScrolling = true;
+                });
+              } else if (scrollNotification is ScrollEndNotification) {
+                // User stopped scrolling - show FAB and start timer to hide it
+                setState(() {
+                  _isUserScrolling = false;
+                });
+
+                // Start timer to hide FAB after 3 seconds of no scrolling
+                if (_showScrollToBottomFAB) {
+                  _fabHideTimer?.cancel();
+                  _fabHideTimer = Timer(const Duration(seconds: 2), () {
+                    if (mounted) {
+                      setState(() {
+                        _showScrollToBottomFAB = false;
+                      });
+                    }
+                  });
+                }
+              }
+              return false;
+            },
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    _buildAppBar(),
+                    Expanded(child: _buildChatArea()),
+                    _buildMessageInput(),
+                  ],
+                ),
+                // Floating Action Button for scroll to bottom
+                if (_showScrollToBottomFAB && !_isUserScrolling)
+                  Positioned(
+                    bottom: 80, // Position above the message input
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: AnimatedOpacity(
+                        opacity:
+                            _showScrollToBottomFAB && !_isUserScrolling
+                                ? 1.0
+                                : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: InkWell(
+                          onTap: () {
+                            _scrollController.animateTo(
+                              _scrollController.position.maxScrollExtent,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                            // Reset auto-scroll flag
+                            _shouldAutoScroll = false;
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHigh,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.shadow.withAlpha(20),
+                                  offset: const Offset(0, 2),
+                                  blurRadius: 4,
+                                  spreadRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.arrow_downward_rounded,
+                              size: 28,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -152,6 +288,8 @@ class _ChatPageState extends State<ChatPage> {
               context.read<CurrentChatBloc>().add(
                 LoadChatEvent(chatId: chatId),
               );
+              // Set flag to auto-scroll when chat is loaded
+              _shouldAutoScroll = true;
               Navigator.of(context).pop();
             },
             onNewChat: () {
@@ -159,6 +297,8 @@ class _ChatPageState extends State<ChatPage> {
                 selectedChatIndex = -1;
               });
               context.read<CurrentChatBloc>().add(StartNewChatEvent());
+              // Reset message count for new chat
+              _lastMessageCount = 0;
               Navigator.of(context).pop();
             },
             onRenameChat: (chatId, index, title) {
@@ -181,22 +321,53 @@ class _ChatPageState extends State<ChatPage> {
             state is CurrentChatInitial;
         final chat = state is CurrentChatLoaded ? state.chat : null;
 
-        return _AppBarWidget(
-          isNewChat: isNewChat,
-          chat: chat,
-          onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
-          onNewChatTap: () {
-            setState(() {
-              selectedChatIndex = -1;
-            });
-            context.read<CurrentChatBloc>().add(StartNewChatEvent());
-          },
-          onRenameTap:
-              chat != null
-                  ? () => _showRenameDialog(chat.id, -1, chat.title)
-                  : null,
-          onDeleteTap:
-              chat != null ? () => _showDeleteDialog(chat.id, -1) : null,
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            boxShadow:
+                _showAppBarShadow
+                    ? [
+                      BoxShadow(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.shadow.withAlpha(20),
+                        offset: const Offset(0, 2),
+                        blurRadius: 4,
+                        spreadRadius: 0,
+                      ),
+                    ]
+                    : null,
+            border:
+                _showAppBarShadow
+                    ? Border(
+                      bottom: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withAlpha(40),
+                        width: 0.5,
+                      ),
+                    )
+                    : null,
+          ),
+          child: _AppBarWidget(
+            isNewChat: isNewChat,
+            chat: chat,
+            onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+            onNewChatTap: () {
+              setState(() {
+                selectedChatIndex = -1;
+              });
+              context.read<CurrentChatBloc>().add(StartNewChatEvent());
+              // Reset message count for new chat
+              _lastMessageCount = 0;
+            },
+            onRenameTap:
+                chat != null
+                    ? () => _showRenameDialog(chat.id, -1, chat.title)
+                    : null,
+            onDeleteTap:
+                chat != null ? () => _showDeleteDialog(chat.id, -1) : null,
+          ),
         );
       },
     );
@@ -253,24 +424,24 @@ class _ChatPageState extends State<ChatPage> {
                         width: MediaQuery.of(context).size.width * 0.7,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 // SSecond message shimmer
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ShimmerLoading(
                       child: Container(
-                        height: 80,
+                        height: 100,
                         width: MediaQuery.of(context).size.width * 0.8,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                     ),
@@ -295,10 +466,15 @@ class _ChatPageState extends State<ChatPage> {
             ).add(chat_list.AddChatEvent(state.chat!));
           }
 
-          // Auto-scroll to bottom when new messages arrive
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
-          });
+          // Auto-scroll to bottom only when new messages arrive
+          final currentMessageCount = messages.length;
+          if (currentMessageCount > _lastMessageCount || _shouldAutoScroll) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToBottom();
+            });
+            _lastMessageCount = currentMessageCount;
+            _shouldAutoScroll = false;
+          }
 
           return SingleChildScrollView(
             controller: _scrollController,
@@ -354,21 +530,50 @@ class _ChatPageState extends State<ChatPage> {
                     chatState is CurrentChatLoaded &&
                     (chatState.isResponding || chatState.isRegenerating);
 
-                return MessageInput(
-                  controller: _messageController,
-                  focusNode: _messageFocusNode,
-                  onTextChanged: (value) {
-                    setState(() {
-                      // Trigger rebuild for send button
-                    });
-                  },
-                  onSendMessage:
-                      (content, model) => _sendMessage(content, model),
-                  onSendImageMessage:
-                      (content, model, image) =>
-                          _sendImageMessage(content, model, image),
-                  onShowModalSheet: () => _showBottomSheet(),
-                  enabled: !isDisabled,
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    boxShadow:
+                        _showMessageInputShadow
+                            ? [
+                              BoxShadow(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.shadow.withAlpha(20),
+                                offset: const Offset(0, -2),
+                                blurRadius: 4,
+                                spreadRadius: 0,
+                              ),
+                            ]
+                            : null,
+                    border:
+                        _showMessageInputShadow
+                            ? Border(
+                              top: BorderSide(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant.withAlpha(40),
+                                width: 0.5,
+                              ),
+                            )
+                            : null,
+                  ),
+                  child: MessageInput(
+                    controller: _messageController,
+                    focusNode: _messageFocusNode,
+                    onTextChanged: (value) {
+                      setState(() {
+                        // Trigger rebuild for send button
+                      });
+                    },
+                    onSendMessage:
+                        (content, model) => _sendMessage(content, model),
+                    onSendImageMessage:
+                        (content, model, image) =>
+                            _sendImageMessage(content, model, image),
+                    onShowModalSheet: () => _showBottomSheet(),
+                    enabled: !isDisabled,
+                  ),
                 );
               },
             );
@@ -387,7 +592,7 @@ class _ChatPageState extends State<ChatPage> {
           'What can I help you with?',
           style: theme.textTheme.headlineSmall?.copyWith(
             color: theme.colorScheme.onSurface,
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -495,7 +700,9 @@ class _ChatPageState extends State<ChatPage> {
     context.read<ImageUploadBloc>().add(ClearImageEvent());
     _messageController.clear();
     _messageFocusNode.requestFocus();
-    _scrollToBottom();
+
+    // Set flag to auto-scroll when new message arrives
+    _shouldAutoScroll = true;
   }
 
   void _sendImageMessage(String content, String model, ChatImage image) {
@@ -512,7 +719,9 @@ class _ChatPageState extends State<ChatPage> {
     context.read<ImageUploadBloc>().add(ClearImageEvent());
     _messageController.clear();
     _messageFocusNode.requestFocus();
-    _scrollToBottom();
+
+    // Set flag to auto-scroll when new message arrives
+    _shouldAutoScroll = true;
   }
 
   void _regenerateResponse(String messageId) {
@@ -525,6 +734,9 @@ class _ChatPageState extends State<ChatPage> {
     context.read<CurrentChatBloc>().add(
       RegenerateResponseEvent(messageId: messageId, model: selectedModel),
     );
+
+    // Set flag to auto-scroll when regenerated response arrives
+    _shouldAutoScroll = true;
   }
 
   void _scrollToBottom() {
@@ -548,6 +760,8 @@ class _ChatPageState extends State<ChatPage> {
           builder: (context, setDialogState) {
             final enabled = titleController.text.isNotEmpty;
             return AlertDialog(
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHigh,
               title: Text(
                 'New Chat Title',
                 style: Theme.of(context).textTheme.bodyLarge,
@@ -567,7 +781,9 @@ class _ChatPageState extends State<ChatPage> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
                     'Cancel',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -578,7 +794,7 @@ class _ChatPageState extends State<ChatPage> {
                             context.read<ChatListBloc>().add(
                               chat_list.UpdateChatTitleEvent(
                                 chatId: chatId,
-                                title: titleController.text,
+                                title: titleController.text.trim(),
                               ),
                             );
 
@@ -586,7 +802,7 @@ class _ChatPageState extends State<ChatPage> {
                             // update the title in current chat bloc as well
                             context.read<CurrentChatBloc>().add(
                               current_chat.UpdateChatTitleEvent(
-                                titleController.text,
+                                titleController.text.trim(),
                                 chatId,
                               ),
                             );
@@ -600,7 +816,10 @@ class _ChatPageState extends State<ChatPage> {
                   child: Text(
                     'Rename',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                      color:
+                          enabled
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.outline,
                     ),
                   ),
                 ),
@@ -664,6 +883,7 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
           title: const Text('Delete Chat'),
           content: const Text('Are you sure you want to delete this chat?'),
           actions: [
@@ -671,7 +891,9 @@ class _ChatPageState extends State<ChatPage> {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Cancel',
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             TextButton(
@@ -685,6 +907,8 @@ class _ChatPageState extends State<ChatPage> {
                 if (currentChatState is CurrentChatLoaded &&
                     currentChatState.chat?.id == chatId) {
                   context.read<CurrentChatBloc>().add(StartNewChatEvent());
+                  // Reset message count for new chat
+                  _lastMessageCount = 0;
                 }
 
                 Navigator.of(context).pop();
@@ -697,7 +921,6 @@ class _ChatPageState extends State<ChatPage> {
                 'Delete',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.error,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

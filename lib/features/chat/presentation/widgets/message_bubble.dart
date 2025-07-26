@@ -162,7 +162,7 @@ class MessageBubble extends StatelessWidget {
     final controller = MenuController();
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.only(top: 12.0, left: 12, right: 12),
       child: OptionsMenu(
         menuController: controller,
         alignmentOffset: Offset(

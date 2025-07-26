@@ -108,7 +108,7 @@ class MessageInput extends StatelessWidget {
             child: Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(24),
                   child: Image.file(
                     File(state.localPath!),
                     height: size,

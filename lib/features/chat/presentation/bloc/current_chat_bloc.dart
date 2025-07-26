@@ -329,7 +329,7 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
       emit(
         currentState.copyWith(
           chat: currentState.chat!.copyWith(messages: messages),
-          isResponding: true, // Keep responding state while receiving chunks
+          isResponding: false, // Keep responding state while receiving chunks
         ),
       );
     }

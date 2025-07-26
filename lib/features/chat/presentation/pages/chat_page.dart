@@ -7,6 +7,7 @@ import 'package:chatgpt_clone/features/chat/presentation/bloc/current_chat_bloc.
 import 'package:chatgpt_clone/features/chat/presentation/bloc/image_upload_bloc.dart';
 import 'package:chatgpt_clone/features/chat/presentation/bloc/chat_ui_cubit.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/chat_drawer.dart';
+import 'package:chatgpt_clone/features/chat/presentation/widgets/dot_animated_indicator.dart';
 import 'package:chatgpt_clone/features/chat/presentation/widgets/options_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -66,7 +67,6 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             _buildAppBar(),
             Expanded(child: _buildChatArea()),
-            _buildTypingIndicators(),
             _buildMessageInput(),
           ],
         ),
@@ -229,47 +229,37 @@ class _ChatPageState extends State<ChatPage> {
             _scrollToBottom();
           });
 
-          return ListView.builder(
+          return SingleChildScrollView(
             controller: _scrollController,
-            padding: const EdgeInsets.all(16),
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final message = messages[index];
-              return MessageBubble(
-                message: message,
-                onRegenerate:
-                    message.role == MessageRole.assistant && !message.hasError
-                        ? () => _regenerateResponse(message.id)
-                        : null,
-              );
-            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    return MessageBubble(
+                      message: message,
+                      onRegenerate:
+                          message.role == MessageRole.assistant &&
+                                  !message.hasError
+                              ? () => _regenerateResponse(message.id)
+                              : null,
+                    );
+                  },
+                ),
+                if (state.isResponding || state.isRegenerating) ...[
+                  DotAnimatedIndicator(),
+                ],
+              ],
+            ),
           );
         }
 
         return _buildEmptyState();
-      },
-    );
-  }
-
-  Widget _buildTypingIndicators() {
-    return BlocBuilder<CurrentChatBloc, CurrentChatState>(
-      buildWhen: (previous, current) {
-        if (previous is CurrentChatLoaded && current is CurrentChatLoaded) {
-          return previous.isResponding != current.isResponding ||
-              previous.isRegenerating != current.isRegenerating;
-        }
-        return true;
-      },
-      builder: (context, state) {
-        if (state is CurrentChatLoaded) {
-          if (state.isResponding) {
-            return _buildIndicator('Responding...');
-          }
-          if (state.isRegenerating) {
-            return _buildIndicator('Regenerating response...');
-          }
-        }
-        return const SizedBox.shrink();
       },
     );
   }
@@ -330,23 +320,6 @@ class _ChatPageState extends State<ChatPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildIndicator(String text) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Text(text),
-          const SizedBox(width: 8),
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
       ),
     );
   }

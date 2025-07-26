@@ -17,11 +17,28 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = MenuController();
     final isUser = message.role == MessageRole.user;
-    final theme = Theme.of(context);
 
-    if (isUser && message.content.isNotEmpty) {
+    if (isUser) {
+      return _buildUserMessageBubble(context);
+    }
+
+    return BlocBuilder<CurrentChatBloc, CurrentChatState>(
+      buildWhen: (previous, current) {
+        return current is CurrentChatLoaded &&
+            current.messages.isNotEmpty &&
+            message.id == current.messages[current.messages.length - 1].id;
+      },
+      builder: (context, state) {
+        return _buildAiMessageBubble(context);
+      },
+    );
+  }
+
+  Widget _buildUserMessageBubble(BuildContext context) {
+    final controller = MenuController();
+    final theme = Theme.of(context);
+    if (message.content.isNotEmpty) {
       return OptionsMenu(
         menuController: controller,
         alignmentOffset: Offset(MediaQuery.of(context).size.width * 0.4, 0),
@@ -137,16 +154,8 @@ class MessageBubble extends StatelessWidget {
         ),
       );
     }
-    return BlocBuilder<CurrentChatBloc, CurrentChatState>(
-      buildWhen: (previous, current) {
-        return current is CurrentChatLoaded &&
-            current.messages.isNotEmpty &&
-            message.id == current.messages[current.messages.length - 1].id;
-      },
-      builder: (context, state) {
-        return _buildAiMessageBubble(context);
-      },
-    );
+
+    return const SizedBox.shrink();
   }
 
   Widget _buildAiMessageBubble(BuildContext context) {

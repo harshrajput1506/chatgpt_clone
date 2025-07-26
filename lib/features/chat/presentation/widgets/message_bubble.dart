@@ -161,53 +161,50 @@ class MessageBubble extends StatelessWidget {
   Widget _buildAiMessageBubble(BuildContext context) {
     final controller = MenuController();
     final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: OptionsMenu(
-          menuController: controller,
-          alignmentOffset: Offset(
-            MediaQuery.of(context).size.width * 0.2,
-            -MediaQuery.of(context).size.height * 0.4,
-          ),
-          backgroundColor: theme.colorScheme.surfaceContainerHighest,
-          menuItems: _buildAiMenuItemsList(context),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (message.content.isNotEmpty &&
-                  message.role == MessageRole.assistant)
-                //  MarkdownBody here
-                Material(
-                  child: InkWell(
-                    onTap: () => controller.close(),
-                    onLongPress: () {
-                      // Show options menu for assistant messages
-                      if (controller.isOpen) {
-                        controller.close();
-                      } else {
-                        controller.open();
-                      }
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: OptionsMenu(
+        menuController: controller,
+        alignmentOffset: Offset(
+          MediaQuery.of(context).size.width * 0.2,
+          -MediaQuery.of(context).size.height * 0.4,
+        ),
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+        menuItems: _buildAiMenuItemsList(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (message.content.isNotEmpty &&
+                message.role == MessageRole.assistant)
+              //  MarkdownBody here
+              Material(
+                child: InkWell(
+                  onTap: () => controller.close(),
+                  onLongPress: () {
+                    // Show options menu for assistant messages
+                    if (controller.isOpen) {
+                      controller.close();
+                    } else {
+                      controller.open();
+                    }
+                  },
+                  child: GptMarkdown(
+                    message.content,
+                    codeBuilder: (context, name, code, closed) {
+                      return _codeBuilder(context, name, code, closed);
                     },
-                    child: GptMarkdown(
-                      message.content,
-                      codeBuilder: (context, name, code, closed) {
-                        return _codeBuilder(context, name, code, closed);
-                      },
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                      ),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
-
-              _buildAiMessageError(context),
-
-              // showing ai response options lile copy, regenerate
-              _buildAiResponseOptions(context),
-            ],
-          ),
+              ),
+    
+            _buildAiMessageError(context),
+    
+            // showing ai response options lile copy, regenerate
+            _buildAiResponseOptions(context),
+          ],
         ),
       ),
     );

@@ -468,7 +468,10 @@ class _ChatPageState extends State<ChatPage> {
 
           // Auto-scroll to bottom only when new messages arrive
           final currentMessageCount = messages.length;
-          if (currentMessageCount > _lastMessageCount || _shouldAutoScroll) {
+          if (currentMessageCount > _lastMessageCount ||
+              _shouldAutoScroll ||
+              (messages.isNotEmpty &&
+                  messages[messages.length - 1].isLoading)) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToBottom();
             });

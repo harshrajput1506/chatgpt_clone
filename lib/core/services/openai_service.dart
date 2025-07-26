@@ -18,6 +18,8 @@ class OpenAIService {
   OpenAIService(this._dio);
 
   Stream<Map<String, dynamic>> get responseStream {
+    // Ensure we have a fresh stream controller
+
     _responseStreamController ??=
         StreamController<Map<String, dynamic>>.broadcast();
     return _responseStreamController!.stream;
@@ -87,11 +89,6 @@ class OpenAIService {
 
   Future<void> generateStreamResponse(String chatId, String model) async {
     try {
-      //Ensure we have a fresh stream controller
-      await _closeExistingStream();
-      _responseStreamController =
-          StreamController<Map<String, dynamic>>.broadcast();
-
       final response = await _dio.post<ResponseBody>(
         '$baseUrl/ai/chats/$chatId/stream',
         data: {'model': model},
@@ -183,14 +180,14 @@ class OpenAIService {
             },
             onDone: () {
               _logger.i("Stream done.");
-              _closeExistingStream();
+              closeExistingStream();
             },
             onError: (e) {
               _logger.e('Stream error: $e');
               _responseStreamController?.addError(
                 ServerFailure('Stream error: $e'),
               );
-              _closeExistingStream();
+              closeExistingStream();
             },
             cancelOnError: false,
           );
@@ -253,11 +250,6 @@ class OpenAIService {
     String messageId,
   ) async {
     try {
-      //Ensure we have a fresh stream controller
-      await _closeExistingStream();
-      _responseStreamController =
-          StreamController<Map<String, dynamic>>.broadcast();
-
       final response = await _dio.post<ResponseBody>(
         '$baseUrl/ai/chats/$chatId/messages/$messageId/regenerate-stream',
         data: {'model': model},
@@ -355,14 +347,14 @@ class OpenAIService {
             },
             onDone: () {
               _logger.i("Regenerate stream done.");
-              _closeExistingStream();
+              closeExistingStream();
             },
             onError: (e) {
               _logger.e('Regenerate stream error: $e');
               _responseStreamController?.addError(
                 ServerFailure('Stream error'),
               );
-              _closeExistingStream();
+              closeExistingStream();
             },
             cancelOnError: false,
           );
@@ -419,7 +411,7 @@ class OpenAIService {
     }
   }
 
-  Future<void> _closeExistingStream() async {
+  Future<void> closeExistingStream() async {
     await _streamSubscription?.cancel();
     _streamSubscription = null;
 
@@ -492,6 +484,6 @@ class OpenAIService {
   }
 
   void dispose() {
-    _closeExistingStream();
+    closeExistingStream();
   }
 }

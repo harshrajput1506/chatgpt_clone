@@ -180,7 +180,8 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
     );
   }
 
-  void _startListeningToResponseStream(bool isNewChat) {
+  Future<void> _startListeningToResponseStream(bool isNewChat) async {
+    await chatRepository.closeExistingStream();
     _initializeStreamListener(isNewChat: isNewChat);
   }
 
@@ -270,6 +271,7 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
         currentState.copyWith(
           chat: currentState.chat!.copyWith(messages: messages),
           isResponding: false,
+          isRegenerating: false,
         ),
       );
 
@@ -330,6 +332,7 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
         currentState.copyWith(
           chat: currentState.chat!.copyWith(messages: messages),
           isResponding: false, // Keep responding state while receiving chunks
+          isRegenerating: false,
         ),
       );
     }
@@ -378,6 +381,9 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
 
     final isNewChat = currentState.isNewChat;
 
+    _logger.i('Starting response stream listener');
+    await _startListeningToResponseStream(isNewChat);
+
     final result = await chatRepository.sendMessage(
       model: event.model,
       content: event.message,
@@ -415,9 +421,6 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
           isResponding: true,
         ),
       );
-
-      _logger.i('Starting response stream listener');
-      _startListeningToResponseStream(isNewChat);
     });
   }
 
@@ -446,17 +449,17 @@ class CurrentChatBloc extends Bloc<CurrentChatEvent, CurrentChatState> {
       ),
     );
 
+    _logger.i('Regeneration started for message ID: ${event.messageId}');
+    // Start listening to the response stream for regeneration
+    await _startListeningToResponseStream(false);
+
     final result = await chatRepository.regenerateResponse(
       chatId: currentState.chat!.id,
       messageId: event.messageId,
       model: event.model,
     );
 
-    result.fold((failure) => emit(CurrentChatError(failure.message)), (_) {
-      _logger.i('Regeneration started for message ID: ${event.messageId}');
-      // Start listening to the response stream for regeneration
-      _startListeningToResponseStream(false);
-    });
+    result.fold((failure) => emit(CurrentChatError(failure.message)), (_) {});
   }
 
   void _onStartNewChat(

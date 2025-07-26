@@ -29,6 +29,8 @@ abstract class ChatRepository {
 
   Stream<Map<String, dynamic>> get responseStream;
 
+  Future<void> closeExistingStream();
+
   void dispose();
 
 }

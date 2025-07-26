@@ -64,12 +64,34 @@ class _ChatPageState extends State<ChatPage> {
       drawerScrimColor: Theme.of(context).colorScheme.onSurface.withAlpha(100),
       drawer: _buildDrawer(),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(),
-            Expanded(child: _buildChatArea()),
-            _buildMessageInput(),
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<ImageUploadBloc, ImageUploadState>(
+              listener: (context, state) {
+                if (state is ImageUploadError) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(state.message)));
+                }
+              },
+            ),
+            BlocListener<CurrentChatBloc, CurrentChatState>(
+              listener: (context, state) {
+                if (state is CurrentChatError) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(state.message)));
+                }
+              },
+            ),
           ],
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(child: _buildChatArea()),
+              _buildMessageInput(),
+            ],
+          ),
         ),
       ),
     );
@@ -237,17 +259,6 @@ class _ChatPageState extends State<ChatPage> {
                   ],
                 ),
               ],
-            ),
-          );
-        }
-
-        if (state is CurrentChatError) {
-          return Center(
-            child: Text(
-              'Error: ${state.message}',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
             ),
           );
         }

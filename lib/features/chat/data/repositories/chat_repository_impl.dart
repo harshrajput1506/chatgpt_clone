@@ -221,6 +221,11 @@ class ChatRepositoryImpl implements ChatRepository {
       openAIService.responseStream;
 
   @override
+  Future<void> closeExistingStream() async {
+    await openAIService.closeExistingStream();
+  }
+
+  @override
   void dispose() {
     openAIService.dispose();
   }
